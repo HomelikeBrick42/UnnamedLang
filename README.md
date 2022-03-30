@@ -103,11 +103,8 @@ const bar = foo * 56
 ## Functions
 
 - Functions have no side effects and will only have access to their parameters and other constants
-<br/>
 - Given the same input they will always produce the same output
-<br/>
 - They also can be run at compile time for the initalization of other constants or the types of variables
-<br/>
 - You cannot call procedures from inside of a function
 
 ### Examples
