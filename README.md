@@ -154,7 +154,7 @@ Procedures can have side effects and dictate the main control flow of the progra
 ```c
 const greet_user = proc(): void {
 	print("What is your name: ")
-	name := read_line_from_console(stdin)
+	name: string <- read_line_from_console(stdin)
 	print("Hello, %\n", name)
 }
 ```
