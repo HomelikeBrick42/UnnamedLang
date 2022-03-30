@@ -4,7 +4,7 @@ This is an expression based-lang with newlines instead of semicolons
 
 <br/>
 
-### Names
+## Names
 
 #### Regex
 
@@ -21,7 +21,7 @@ bAr_123hello
 
 <br/>
 
-### Integers
+## Integers
 
 #### Regex
 
@@ -46,7 +46,7 @@ bAr_123hello
 
 <br/>
 
-### Floats
+## Floats
 
 #### Regex
 
