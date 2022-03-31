@@ -89,3 +89,17 @@ const greet_user = proc(): void {
 	print("Hello, %\n", name)
 }
 ```
+
+## Wildcard
+
+A wildcard can be used in the place of a type (and maybe pattern matching in the future) and it will let the compiler infer the type from usage
+
+### Examples
+
+```c
+foo: _ <- 5 // type will be infered to `float` from further usage
+bar: float <- foo
+
+// this will error because `string` is not compatable with the already infered type `float`
+// foo <- "some string"
+```
