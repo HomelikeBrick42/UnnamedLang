@@ -65,7 +65,7 @@ const some_constant = 5
 
 a: int <- some_constant
 
-const get_some_constant = func() {
+const get_some_constant = func(): int {
 	// this is not allowed because functions only have access to their parameters and local variables
 	// return a
 
@@ -102,4 +102,9 @@ bar: float <- foo
 
 // this will error because `string` is not compatable with the already infered type `float`
 // foo <- "some string"
+
+// the type will be `untyped_integer`
+// but because there is no usage that it can infer the type from
+// it will be given the type `int`
+baz: _ <- 1 + 2 * 3
 ```
