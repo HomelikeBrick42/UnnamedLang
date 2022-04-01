@@ -41,7 +41,7 @@ const bar = foo * 56
 ### Examples
 
 ```c
-const add = func(a, b: int): int {
+const add = func(a: int, b: int): int {
 	return a + b
 }
 
@@ -93,6 +93,7 @@ const greet_user = proc(): void {
 ## Wildcard
 
 A wildcard can be used in the place of a type (and maybe pattern matching in the future) and it will let the compiler infer the type from usage
+It can also be used for a throwaway name that is not bound
 
 ### Examples
 
@@ -107,4 +108,11 @@ bar: float <- foo
 // but because there is no usage that it can infer the type from
 // it will be given the type `int`
 baz: _ <- 1 + 2 * 3
+```
+
+```c
+// 5 is getting assigned to an empty declaration of type `int`
+// and then the varaible is assigned to `foo` which then
+// gives `foo` type `int`
+foo: _ <- (5 -> _: int)
 ```
