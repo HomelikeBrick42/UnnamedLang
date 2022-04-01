@@ -4,7 +4,7 @@ This is an expression based-lang with newlines instead of semicolons
 
 ## Variables
 
-#### Examples
+### Examples
 
 ```c
 foo: int
@@ -24,7 +24,7 @@ foo <-> bar
 
 ## Constants
 
-#### Examples
+### Examples
 
 ```c
 const foo = 5
@@ -115,4 +115,23 @@ baz: _ <- 1 + 2 * 3
 // and then the varaible is assigned to `foo` which then
 // gives `foo` type `int`
 foo: _ <- (5 -> _: int)
+```
+
+## Generics
+
+Generics are a way to make a copy of a constant for many types
+
+### Examples
+
+```c
+// `T` is a generic parameter
+// it can be of any type
+// in this case it has the type `type`
+const identity[T: type] = func(value: T): T {
+	return value
+}
+
+foo: int <- identity[int](1 + 2 * 3)
+
+bar: string <- identity("hello") // the parameter can be infered from usage
 ```
