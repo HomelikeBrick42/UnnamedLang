@@ -80,11 +80,31 @@ Start:
 
             case '"': {
                 NextChar();
-                std::string value{}; // TODO: Maybe dont leak this
+                std::vector<char> value{}; // TODO: Maybe dont leak this
                 while (CurrentChar() != '"' && CurrentChar() != '\0') {
                     if (CurrentChar() == '\\') {
                         NextChar();
                         switch (CurrentChar()) {
+                            case '"':
+                                value.push_back('\"');
+                                break;
+
+                            case '\\':
+                                value.push_back('\\');
+                                break;
+
+                            case '0':
+                                value.push_back('\0');
+                                break;
+
+                            case 'n':
+                                value.push_back('\n');
+                                break;
+
+                            case 'r':
+                                value.push_back('\r');
+                                break;
+
                             default: {
                                 char chr = NextChar();
                                 throw CompileError{
@@ -95,8 +115,9 @@ Start:
                                 };
                             }
                         }
+                        NextChar();
                     } else {
-                        value += NextChar();
+                        value.push_back(NextChar());
                     }
                 }
                 if (CurrentChar() != '"') {

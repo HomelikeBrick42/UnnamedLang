@@ -8,7 +8,36 @@
 using namespace Langite;
 
 int main(int, char**) {
-    Lexer lexer{ "test.lang", "const <- hello 1 + 2 837.32\n0x43274 \"hello\" * <= >" };
+    Lexer lexer{ "test.lang", R"###(
+const foo = 5
+
+const do_something = func(a: int, b: int): int {
+    return a + b
+}
+
+const greet_user = proc(): void {
+    print("What is your name: ")
+    name: string <- read_line_from_console(stdin)
+    print("Hello, %\n", name)
+}
+
+const int_or_bool = func(condition: bool): type {
+    if condition {
+        return int
+    } else {
+        return bool
+    }
+}
+
+const identity[T: type] = func(value: T): T {
+    return value
+}
+
+bar: int <- identity[int](1 + 2 * 3)
+baz: string <- identity("hello")
+
+some_variable: int_or_bool(true)
+)###" };
     try {
         while (true) {
             Token token = lexer.NextToken();

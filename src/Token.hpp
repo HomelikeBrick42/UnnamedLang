@@ -2,6 +2,7 @@
 
 #include "SourceLocation.hpp"
 
+#include <vector>
 #include <variant>
 
 #define TOKEN_KINDS                                                      \
@@ -18,8 +19,8 @@
     TOKEN_KIND_KEYWORD(If, "if")                                         \
     TOKEN_KIND_KEYWORD(Else, "else")                                     \
     TOKEN_KIND_SINGLE(Newline, "newline", '\n')                          \
-    TOKEN_KIND_SINGLE(OpenParentesis, "(", '(')                          \
-    TOKEN_KIND_SINGLE(CloseParentesis, ")", ')')                         \
+    TOKEN_KIND_SINGLE(OpenParenthesis, "(", '(')                         \
+    TOKEN_KIND_SINGLE(CloseParenthesis, ")", ')')                        \
     TOKEN_KIND_SINGLE(OpenBrace, "{", '{')                               \
     TOKEN_KIND_SINGLE(CloseBrace, "}", '}')                              \
     TOKEN_KIND_SINGLE(OpenSquareBracket, "[", '[')                       \
@@ -34,7 +35,9 @@
     TOKEN_KIND_SINGLE(Slash, "/", '/')                                   \
     TOKEN_KIND_SINGLE(Modulus, "%", '%')                                 \
     TOKEN_KIND_TRIPLE(LessThan, '<', LessThanEqual, '=', LeftArrow, '-') \
-    TOKEN_KIND_DOUBLE(GreaterThan, '>', GreaterThanEqual, '=')
+    TOKEN_KIND_DOUBLE(GreaterThan, '>', GreaterThanEqual, '=')           \
+    TOKEN_KIND_DOUBLE(Equal, '=', EqualEqual, '=')                       \
+    TOKEN_KIND_DOUBLE(ExclamationMark, '!', ExclamationMarkEqual, '=')
 
 namespace Langite {
 
@@ -60,7 +63,7 @@ namespace Langite {
         TokenKind Kind;
         SourceLocation Location;
         size_t Length;
-        std::variant<size_t, double, std::string_view, std::string> Data;
+        std::variant<size_t, double, std::string_view, std::vector<char>> Data;
     };
 
 }
