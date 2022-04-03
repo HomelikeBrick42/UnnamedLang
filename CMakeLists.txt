@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
-project(UnnamedLanguage)
+project(Langite)
 
 set(CMAKE_CXX_STANDARD 23)
 
 add_executable(
-        UnnamedLanguage
-        src/Main.cpp)
-target_compile_options(UnnamedLanguage PRIVATE -Wall -Wextra -Werror)
+        Langite
+        src/Main.cpp
+        src/SourceLocation.hpp)
+target_compile_options(Langite PRIVATE -Wall -Wextra -Werror)

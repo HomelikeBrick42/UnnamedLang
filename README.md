@@ -1,4 +1,4 @@
-# Unnamed Lang
+# Langite
 
 This is an expression based-lang with newlines instead of semicolons
 
