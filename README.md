@@ -24,11 +24,13 @@ foo <-> bar
 
 ## Constants
 
+Constants can be accessed out-of-order
+
 ### Examples
 
 ```c
-const foo = 5
 const bar = foo * 56
+const foo = 5
 ```
 
 ## Functions
@@ -134,4 +136,19 @@ const identity[T: type] = func(value: T): T {
 foo: int <- identity[int](1 + 2 * 3)
 
 bar: string <- identity("hello") // the parameter can be infered from usage
+```
+
+## Arrays
+
+Arrays are for storing lists of objects
+
+### Examples
+
+```c
+test: Array[int, 5]
+test@0 <- 5
+1 + 2 * 3 -> test@3
+test@(the_length-1) <- the_length
+
+const the_length = test.length // test.length is a constant
 ```

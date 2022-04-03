@@ -37,6 +37,13 @@ bar: int <- identity[int](1 + 2 * 3)
 baz: string <- identity("hello")
 
 some_variable: int_or_bool(true)
+
+test: Array[int, 5]
+test@0 <- 5
+1 + 2 * 3 -> test@3
+test@(the_length-1) <- the_length
+
+const the_length = test.length // test.length is a constant
 )###" };
     try {
         while (true) {
