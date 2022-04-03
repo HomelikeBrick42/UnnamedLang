@@ -5,6 +5,11 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(
         Langite
+        src/CompileError.hpp
+        src/Lexer.cpp
+        src/Lexer.hpp
         src/Main.cpp
-        src/SourceLocation.hpp)
+        src/SourceLocation.hpp
+        src/Token.cpp
+        src/Token.hpp)
 target_compile_options(Langite PRIVATE -Wall -Wextra -Werror)
