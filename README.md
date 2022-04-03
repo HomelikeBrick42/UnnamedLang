@@ -112,13 +112,6 @@ bar: float <- foo
 baz: _ <- 1 + 2 * 3
 ```
 
-```c
-// 5 is getting assigned to an empty declaration of type `int`
-// and then the varaible is assigned to `foo` which then
-// gives `foo` type `int`
-foo: _ <- (5 -> _: int)
-```
-
 ## Generics
 
 Generics are a way to make a copy of a constant for many types
