@@ -6,9 +6,9 @@
 
 namespace Langite {
 
-    AstFile ParseFile(std::string_view filepath, std::string_view source) {
+    std::unique_ptr<AstFile> ParseFile(std::string_view filepath, std::string_view source) {
         Lexer lexer{ filepath, source };
-        std::vector<Ast> expressions;
+        std::vector<std::unique_ptr<Ast>> expressions;
         while (lexer.PeekKind() != TokenKind::EndOfFile) {
             AllowMultipleNewlines(lexer);
             expressions.push_back(ParseExpression(lexer));
@@ -16,80 +16,80 @@ namespace Langite {
         }
         Token endOfFileToken = lexer.NextToken();
         assert(endOfFileToken.Kind == TokenKind::EndOfFile);
-        return AstFile{
+        return std::make_unique<AstFile>(AstFile{
             .Expressions    = std::move(expressions),
             .EndOfFileToken = endOfFileToken,
-        };
+        });
     }
 
-    AstBlock ParseBlock(Lexer& lexer) {
+    std::unique_ptr<AstBlock> ParseBlock(Lexer& lexer) {
         Token openBraceToken = ExpectToken(lexer, TokenKind::OpenBrace);
-        std::vector<Ast> expressions;
+        std::vector<std::unique_ptr<Ast>> expressions;
         while (lexer.PeekKind() != TokenKind::CloseBrace) {
             AllowMultipleNewlines(lexer);
             expressions.push_back(ParseExpression(lexer));
             ExpectNewline(lexer);
         }
         Token closeBraceToken = ExpectToken(lexer, TokenKind::CloseBrace);
-        return AstBlock{
+        return std::make_unique<AstBlock>(AstBlock{
             .OpenBraceToken  = openBraceToken,
             .Expressions     = std::move(expressions),
             .CloseBraceToken = closeBraceToken,
-        };
+        });
     }
 
-    AstDeclaration ParseDeclaration(Lexer& lexer) {
-        Token nameToken  = ExpectToken(lexer, TokenKind::Name);
-        Token colonToken = ExpectToken(lexer, TokenKind::Colon);
-        Ast type         = ParseExpression(lexer);
-        return AstDeclaration{
+    std::unique_ptr<AstDeclaration> ParseDeclaration(Lexer& lexer) {
+        Token nameToken           = ExpectToken(lexer, TokenKind::Name);
+        Token colonToken          = ExpectToken(lexer, TokenKind::Colon);
+        std::unique_ptr<Ast> type = ParseExpression(lexer);
+        return std::make_unique<AstDeclaration>(AstDeclaration{
             .NameToken  = nameToken,
             .ColonToken = colonToken,
-            .Type       = std::make_unique<Ast>(std::move(type)),
-        };
+            .Type       = std::move(type),
+        });
     }
 
-    AstIf ParseIf(Lexer& lexer) {
-        Token ifToken      = ExpectToken(lexer, TokenKind::If);
-        Ast condition      = ParseExpression(lexer);
-        AstBlock thenBlock = ParseBlock(lexer);
+    std::unique_ptr<AstIf> ParseIf(Lexer& lexer) {
+        Token ifToken                       = ExpectToken(lexer, TokenKind::If);
+        std::unique_ptr<Ast> condition      = ParseExpression(lexer);
+        std::unique_ptr<AstBlock> thenBlock = ParseBlock(lexer);
         std::optional<Token> elseToken;
         std::optional<std::unique_ptr<Ast>> elseScope;
         if (lexer.PeekKind() == TokenKind::Else) {
             elseToken = lexer.NextToken();
             if (lexer.PeekKind() == TokenKind::If)
-                elseScope = std::make_unique<Ast>(ParseIf(lexer));
+                elseScope = ParseIf(lexer);
             else
-                elseScope = std::make_unique<Ast>(ParseBlock(lexer));
+                elseScope = ParseBlock(lexer);
         }
-        return AstIf{
+        return std::make_unique<AstIf>(AstIf{
             .IfToken   = ifToken,
-            .Condition = std::make_unique<Ast>(std::move(condition)),
+            .Condition = std::move(condition),
             .ThenBlock = std::move(thenBlock),
             .ElseToken = elseToken,
             .ElseScope = std::move(elseScope),
-        };
+        });
     }
 
-    Ast ParseExpression(Lexer& lexer) {
+    std::unique_ptr<Ast> ParseExpression(Lexer& lexer) {
         return ParseBinaryExpression(lexer, 0);
     }
 
-    Ast ParseLeastExpression(Lexer& lexer) {
+    std::unique_ptr<Ast> ParseLeastExpression(Lexer& lexer) {
         return ParseBinaryExpression(lexer, std::numeric_limits<size_t>::max());
     }
 
-    Ast ParsePrimaryExpression(Lexer& lexer) {
+    std::unique_ptr<Ast> ParsePrimaryExpression(Lexer& lexer) {
         switch (lexer.PeekKind()) {
             case TokenKind::OpenParenthesis: {
-                Token openParenthesisToken  = lexer.NextToken();
-                Ast expression              = ParseExpression(lexer);
-                Token closeParenthesisToken = ExpectToken(lexer, TokenKind::CloseParenthesis);
-                return AstParenthesisedExpression{
+                Token openParenthesisToken      = lexer.NextToken();
+                std::unique_ptr<Ast> expression = ParseExpression(lexer);
+                Token closeParenthesisToken     = ExpectToken(lexer, TokenKind::CloseParenthesis);
+                return std::make_unique<AstParenthesisedExpression>(AstParenthesisedExpression{
                     .OpenParenthesisToken  = openParenthesisToken,
-                    .Expression            = std::make_unique<Ast>(std::move(expression)),
+                    .Expression            = std::move(expression),
                     .CloseParenthesisToken = closeParenthesisToken,
-                };
+                });
             }
 
             case TokenKind::Const: {
@@ -100,11 +100,11 @@ namespace Langite {
                 else
                     nameToken = ExpectToken(lexer, TokenKind::Name);
                 std::optional<Token> openSquareBracketToken;
-                std::optional<std::vector<AstDeclaration>> genericParameters;
+                std::optional<std::vector<std::unique_ptr<AstDeclaration>>> genericParameters;
                 std::optional<Token> closeSquareBracketToken;
                 if (lexer.PeekKind() == TokenKind::OpenSquareBracket) {
                     openSquareBracketToken = lexer.NextToken();
-                    genericParameters      = std::vector<AstDeclaration>{};
+                    genericParameters      = std::vector<std::unique_ptr<AstDeclaration>>{};
                     while (lexer.PeekKind() != TokenKind::CloseSquareBracket) {
                         genericParameters->push_back(ParseDeclaration(lexer));
                         ExpectCommaOrNewline(lexer);
@@ -115,11 +115,11 @@ namespace Langite {
                 std::optional<std::unique_ptr<Ast>> type;
                 if (lexer.PeekKind() == TokenKind::Colon) {
                     colonToken = lexer.NextToken();
-                    type       = std::make_unique<Ast>(ParseExpression(lexer));
+                    type       = ParseExpression(lexer);
                 }
-                Token equalToken = ExpectToken(lexer, TokenKind::Equal);
-                Ast value        = ParseExpression(lexer);
-                return AstConstDeclaration{
+                Token equalToken           = ExpectToken(lexer, TokenKind::Equal);
+                std::unique_ptr<Ast> value = ParseExpression(lexer);
+                return std::make_unique<AstConstDeclaration>(AstConstDeclaration{
                     .ConstToken              = constToken,
                     .NameToken               = nameToken,
                     .OpenSquareBracketToken  = openSquareBracketToken,
@@ -128,95 +128,95 @@ namespace Langite {
                     .ColonToken              = colonToken,
                     .Type                    = std::move(type),
                     .EqualToken              = equalToken,
-                    .Value                   = std::make_unique<Ast>(std::move(value)),
-                };
+                    .Value                   = std::move(value),
+                });
             }
 
             case TokenKind::Name: {
                 Token nameToken = lexer.NextToken();
                 if (lexer.PeekKind() == TokenKind::Colon) {
-                    Token colonToken = lexer.NextToken();
-                    Ast type         = ParseExpression(lexer);
-                    return AstDeclaration{
+                    Token colonToken          = lexer.NextToken();
+                    std::unique_ptr<Ast> type = ParseExpression(lexer);
+                    return std::make_unique<AstDeclaration>(AstDeclaration{
                         .NameToken  = nameToken,
                         .ColonToken = colonToken,
-                        .Type       = std::make_unique<Ast>(std::move(type)),
-                    };
+                        .Type       = std::move(type),
+                    });
                 } else {
-                    return AstName{
+                    return std::make_unique<AstName>(AstName{
                         .NameToken = nameToken,
-                    };
+                    });
                 }
             }
 
             case TokenKind::Wildcard:
-                return AstWildcard{
+                return std::make_unique<AstWildcard>(AstWildcard{
                     .WildcardToken = lexer.NextToken(),
-                };
+                });
 
             case TokenKind::Integer:
-                return AstInteger{
+                return std::make_unique<AstInteger>(AstInteger{
                     .IntegerToken = lexer.NextToken(),
-                };
+                });
 
             case TokenKind::Float:
-                return AstFloat{
+                return std::make_unique<AstFloat>(AstFloat{
                     .FloatToken = lexer.NextToken(),
-                };
+                });
 
             case TokenKind::String:
-                return AstString{
+                return std::make_unique<AstString>(AstString{
                     .StringToken = lexer.NextToken(),
-                };
+                });
 
             case TokenKind::Func: {
                 Token funcToken            = lexer.NextToken();
                 Token openParenthesisToken = ExpectToken(lexer, TokenKind::OpenParenthesis);
-                std::vector<AstDeclaration> parameters;
+                std::vector<std::unique_ptr<AstDeclaration>> parameters;
                 while (lexer.PeekKind() != TokenKind::CloseParenthesis) {
                     parameters.push_back(ParseDeclaration(lexer));
                     ExpectCommaOrNewline(lexer);
                 }
-                Token closeParenthesisToken = ExpectToken(lexer, TokenKind::CloseParenthesis);
-                Token colonToken            = ExpectToken(lexer, TokenKind::Colon);
-                Ast returnType              = ParseLeastExpression(lexer);
-                std::optional<AstBlock> body;
+                Token closeParenthesisToken     = ExpectToken(lexer, TokenKind::CloseParenthesis);
+                Token colonToken                = ExpectToken(lexer, TokenKind::Colon);
+                std::unique_ptr<Ast> returnType = ParseLeastExpression(lexer);
+                std::optional<std::unique_ptr<AstBlock>> body;
                 if (lexer.PeekKind() == TokenKind::OpenBrace)
                     body = ParseBlock(lexer);
-                return AstFunction{
+                return std::make_unique<AstFunction>(AstFunction{
                     .FuncToken             = funcToken,
                     .OpenParenthesisToken  = openParenthesisToken,
                     .Parameters            = std::move(parameters),
                     .CloseParenthesisToken = closeParenthesisToken,
                     .ColonToken            = colonToken,
-                    .ReturnType            = std::make_unique<Ast>(std::move(returnType)),
+                    .ReturnType            = std::move(returnType),
                     .Body                  = std::move(body),
-                };
+                });
             }
 
             case TokenKind::Proc: {
                 Token procToken            = lexer.NextToken();
                 Token openParenthesisToken = ExpectToken(lexer, TokenKind::OpenParenthesis);
-                std::vector<AstDeclaration> parameters;
+                std::vector<std::unique_ptr<AstDeclaration>> parameters;
                 while (lexer.PeekKind() != TokenKind::CloseParenthesis) {
                     parameters.push_back(ParseDeclaration(lexer));
                     ExpectCommaOrNewline(lexer);
                 }
-                Token closeParenthesisToken = ExpectToken(lexer, TokenKind::CloseParenthesis);
-                Token colonToken            = ExpectToken(lexer, TokenKind::Colon);
-                Ast returnType              = ParseLeastExpression(lexer);
-                std::optional<AstBlock> body;
+                Token closeParenthesisToken     = ExpectToken(lexer, TokenKind::CloseParenthesis);
+                Token colonToken                = ExpectToken(lexer, TokenKind::Colon);
+                std::unique_ptr<Ast> returnType = ParseLeastExpression(lexer);
+                std::optional<std::unique_ptr<AstBlock>> body;
                 if (lexer.PeekKind() == TokenKind::OpenBrace)
                     body = ParseBlock(lexer);
-                return AstProcedure{
+                return std::make_unique<AstProcedure>(AstProcedure{
                     .ProcToken             = procToken,
                     .OpenParenthesisToken  = openParenthesisToken,
                     .Parameters            = std::move(parameters),
                     .CloseParenthesisToken = closeParenthesisToken,
                     .ColonToken            = colonToken,
-                    .ReturnType            = std::make_unique<Ast>(std::move(returnType)),
+                    .ReturnType            = std::move(returnType),
                     .Body                  = std::move(body),
-                };
+                });
             }
 
             case TokenKind::Return: {
@@ -226,11 +226,11 @@ namespace Langite {
                     lexer.PeekKind() != TokenKind::CloseParenthesis &&
                     lexer.PeekKind() != TokenKind::CloseSquareBracket &&
                     lexer.PeekKind() != TokenKind::Newline)
-                    value = std::make_unique<Ast>(ParseExpression(lexer));
-                return AstReturn{
+                    value = ParseExpression(lexer);
+                return std::make_unique<AstReturn>(AstReturn{
                     .ReturnToken = returnToken,
                     .Value       = std::move(value),
-                };
+                });
             }
 
             case TokenKind::If:
@@ -251,23 +251,21 @@ namespace Langite {
         }
     }
 
-    Ast ParseBinaryExpression(Lexer& lexer, size_t parentPrecedence) {
-        std::optional<Ast> left_; // this is to delay construction of the std::variant
+    std::unique_ptr<Ast> ParseBinaryExpression(Lexer& lexer, size_t parentPrecedence) {
+        std::unique_ptr<Ast> left; // this is to delay construction of the std::variant
 
         size_t unaryPrecedence = GetUnaryPrecedence(lexer.PeekKind());
         if (unaryPrecedence > 0) {
-            Token operatorToken = lexer.NextToken();
-            Ast operand         = ParseBinaryExpression(lexer, unaryPrecedence);
+            Token operatorToken          = lexer.NextToken();
+            std::unique_ptr<Ast> operand = ParseBinaryExpression(lexer, unaryPrecedence);
 
-            left_ = AstUnary{
+            left = std::make_unique<AstUnary>(AstUnary{
                 .OperatorToken = operatorToken,
-                .Operand       = std::make_unique<Ast>(std::move(operand)),
-            };
+                .Operand       = std::move(operand),
+            });
         } else {
-            left_ = ParsePrimaryExpression(lexer);
+            left = ParsePrimaryExpression(lexer);
         }
-
-        Ast left = std::move(*left_); // move it to an actual variable
 
         while (true) {
             switch (lexer.PeekKind()) {
@@ -275,44 +273,44 @@ namespace Langite {
                     Token periodToken    = lexer.NextToken();
                     Token fieldNameToken = ExpectToken(lexer, TokenKind::Name);
 
-                    left = AstFieldAccess{
-                        .Operand        = std::make_unique<Ast>(std::move(left)),
+                    left = std::make_unique<AstFieldAccess>(AstFieldAccess{
+                        .Operand        = std::move(left),
                         .PeriodToken    = periodToken,
                         .FieldNameToken = fieldNameToken,
-                    };
+                    });
                 } break;
 
                 case TokenKind::At: {
-                    Token atToken = lexer.NextToken();
-                    Ast indexer   = ParseLeastExpression(lexer);
+                    Token atToken                = lexer.NextToken();
+                    std::unique_ptr<Ast> indexer = ParseLeastExpression(lexer);
 
-                    left = AstIndex{
-                        .Operand = std::make_unique<Ast>(std::move(left)),
+                    left = std::make_unique<AstIndex>(AstIndex{
+                        .Operand = std::move(left),
                         .AtToken = atToken,
-                        .Indexer = std::make_unique<Ast>(std::move(indexer)),
-                    };
+                        .Indexer = std::move(indexer),
+                    });
                 } break;
 
                 case TokenKind::OpenParenthesis: {
                     Token openParenthesisToken = lexer.NextToken();
-                    std::vector<Ast> arguments;
+                    std::vector<std::unique_ptr<Ast>> arguments;
                     while (lexer.PeekKind() != TokenKind::CloseParenthesis) {
                         arguments.push_back(ParseExpression(lexer));
                         ExpectCommaOrNewline(lexer);
                     }
                     Token closeParenthesisToken = ExpectToken(lexer, TokenKind::CloseParenthesis);
 
-                    left = AstCall{
-                        .Operand               = std::make_unique<Ast>(std::move(left)),
+                    left = std::make_unique<AstCall>(AstCall{
+                        .Operand               = std::move(left),
                         .OpenParenthesisToken  = openParenthesisToken,
                         .Arguments             = std::move(arguments),
                         .CloseParenthesisToken = closeParenthesisToken,
-                    };
+                    });
                 } break;
 
                 case TokenKind::OpenSquareBracket: {
                     Token openSquareBracketToken = lexer.NextToken();
-                    std::vector<Ast> genericArguments;
+                    std::vector<std::unique_ptr<Ast>> genericArguments;
                     while (lexer.PeekKind() != TokenKind::CloseSquareBracket) {
                         genericArguments.push_back(ParseExpression(lexer));
                         ExpectCommaOrNewline(lexer);
@@ -320,12 +318,12 @@ namespace Langite {
                     Token closeSquareBracketToken =
                         ExpectToken(lexer, TokenKind::CloseSquareBracket);
 
-                    left = AstGenericInstantiation{
-                        .Operand                 = std::make_unique<Ast>(std::move(left)),
+                    left = std::make_unique<AstGenericInstantiation>(AstGenericInstantiation{
+                        .Operand                 = std::move(left),
                         .OpenSquareBracketToken  = openSquareBracketToken,
                         .GenericArguments        = std::move(genericArguments),
                         .CloseSquareBracketToken = closeSquareBracketToken,
-                    };
+                    });
                 } break;
 
                 default: {
@@ -333,14 +331,14 @@ namespace Langite {
                     if (binaryPrecedence <= parentPrecedence)
                         goto End;
 
-                    Token operatorToken = lexer.NextToken();
-                    Ast right           = ParseBinaryExpression(lexer, binaryPrecedence);
+                    Token operatorToken        = lexer.NextToken();
+                    std::unique_ptr<Ast> right = ParseBinaryExpression(lexer, binaryPrecedence);
 
-                    left = AstBinary{
-                        .Left          = std::make_unique<Ast>(std::move(left)),
+                    left = std::make_unique<AstBinary>(AstBinary{
+                        .Left          = std::move(left),
                         .OperatorToken = operatorToken,
-                        .Right         = std::make_unique<Ast>(std::move(right)),
-                    };
+                        .Right         = std::move(right),
+                    });
                 } break;
             }
         }

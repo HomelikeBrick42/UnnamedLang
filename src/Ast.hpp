@@ -8,107 +8,73 @@
 
 namespace Langite {
 
-    struct AstFile;
-    struct AstBlock;
-    struct AstUnary;
-    struct AstBinary;
-    struct AstFieldAccess;
-    struct AstIndex;
-    struct AstCall;
-    struct AstGenericInstantiation;
-    struct AstParenthesisedExpression;
-    struct AstConstDeclaration;
-    struct AstDeclaration;
-    struct AstName;
-    struct AstWildcard;
-    struct AstInteger;
-    struct AstFloat;
-    struct AstString;
-    struct AstFunction;
-    struct AstProcedure;
-    struct AstReturn;
-    struct AstIf;
+    struct Ast {};
 
-    using Ast = std::variant<AstFile,
-                             AstBlock,
-                             AstUnary,
-                             AstBinary,
-                             AstFieldAccess,
-                             AstIndex,
-                             AstCall,
-                             AstGenericInstantiation,
-                             AstParenthesisedExpression,
-                             AstConstDeclaration,
-                             AstDeclaration,
-                             AstName,
-                             AstWildcard,
-                             AstInteger,
-                             AstFloat,
-                             AstString,
-                             AstFunction,
-                             AstProcedure,
-                             AstReturn,
-                             AstIf>;
-
-    struct AstFile {
-        std::vector<Ast> Expressions;
+    struct AstFile: Ast {
+        std::vector<std::unique_ptr<Ast>> Expressions;
         Token EndOfFileToken;
     };
 
-    struct AstBlock {
+    struct AstBlock: Ast {
         Token OpenBraceToken;
-        std::vector<Ast> Expressions;
+        std::vector<std::unique_ptr<Ast>> Expressions;
         Token CloseBraceToken;
     };
 
-    struct AstUnary {
+    struct AstUnary: Ast {
         Token OperatorToken;
         std::unique_ptr<Ast> Operand;
     };
 
-    struct AstBinary {
+    struct AstBinary: Ast {
         std::unique_ptr<Ast> Left;
         Token OperatorToken;
         std::unique_ptr<Ast> Right;
     };
 
-    struct AstFieldAccess {
+    struct AstFieldAccess: Ast {
         std::unique_ptr<Ast> Operand;
         Token PeriodToken;
         Token FieldNameToken;
     };
 
-    struct AstIndex {
+    struct AstIndex: Ast {
         std::unique_ptr<Ast> Operand;
         Token AtToken;
         std::unique_ptr<Ast> Indexer;
     };
 
-    struct AstCall {
+    struct AstCall: Ast {
         std::unique_ptr<Ast> Operand;
         Token OpenParenthesisToken;
-        std::vector<Ast> Arguments;
+        std::vector<std::unique_ptr<Ast>> Arguments;
         Token CloseParenthesisToken;
     };
 
-    struct AstGenericInstantiation {
+    struct AstGenericInstantiation: Ast {
         std::unique_ptr<Ast> Operand;
         Token OpenSquareBracketToken;
-        std::vector<Ast> GenericArguments;
+        std::vector<std::unique_ptr<Ast>> GenericArguments;
         Token CloseSquareBracketToken;
     };
 
-    struct AstParenthesisedExpression {
+    struct AstParenthesisedExpression: Ast {
         Token OpenParenthesisToken;
         std::unique_ptr<Ast> Expression;
         Token CloseParenthesisToken;
     };
 
-    struct AstConstDeclaration {
+    struct AstDeclaration: Ast {
+        Token NameToken;
+        Token ColonToken;
+        std::unique_ptr<Ast> Type;
+    };
+
+    struct AstConstDeclaration: Ast {
         Token ConstToken;
         Token NameToken;
         std::optional<Token> OpenSquareBracketToken;
-        std::optional<std::vector<AstDeclaration>> GenericParameters;
+        std::optional<std::vector<std::unique_ptr<AstDeclaration>>> GenericParameters;
         std::optional<Token> CloseSquareBracketToken;
         std::optional<Token> ColonToken;
         std::optional<std::unique_ptr<Ast>> Type;
@@ -116,61 +82,55 @@ namespace Langite {
         std::unique_ptr<Ast> Value;
     };
 
-    struct AstDeclaration {
-        Token NameToken;
-        Token ColonToken;
-        std::unique_ptr<Ast> Type;
-    };
-
-    struct AstName {
+    struct AstName: Ast {
         Token NameToken;
     };
 
-    struct AstWildcard {
+    struct AstWildcard: Ast {
         Token WildcardToken;
     };
 
-    struct AstInteger {
+    struct AstInteger: Ast {
         Token IntegerToken;
     };
 
-    struct AstFloat {
+    struct AstFloat: Ast {
         Token FloatToken;
     };
 
-    struct AstString {
+    struct AstString: Ast {
         Token StringToken;
     };
 
-    struct AstFunction {
+    struct AstFunction: Ast {
         Token FuncToken;
         Token OpenParenthesisToken;
-        std::vector<AstDeclaration> Parameters;
+        std::vector<std::unique_ptr<AstDeclaration>> Parameters;
         Token CloseParenthesisToken;
         Token ColonToken;
         std::unique_ptr<Ast> ReturnType;
-        std::optional<AstBlock> Body;
+        std::optional<std::unique_ptr<AstBlock>> Body;
     };
 
-    struct AstProcedure {
+    struct AstProcedure: Ast {
         Token ProcToken;
         Token OpenParenthesisToken;
-        std::vector<AstDeclaration> Parameters;
+        std::vector<std::unique_ptr<AstDeclaration>> Parameters;
         Token CloseParenthesisToken;
         Token ColonToken;
         std::unique_ptr<Ast> ReturnType;
-        std::optional<AstBlock> Body;
+        std::optional<std::unique_ptr<AstBlock>> Body;
     };
 
-    struct AstReturn {
+    struct AstReturn: Ast {
         Token ReturnToken;
         std::optional<std::unique_ptr<Ast>> Value;
     };
 
-    struct AstIf {
+    struct AstIf: Ast {
         Token IfToken;
         std::unique_ptr<Ast> Condition;
-        AstBlock ThenBlock;
+        std::unique_ptr<AstBlock> ThenBlock;
         std::optional<Token> ElseToken;
         std::optional<std::unique_ptr<Ast>> ElseScope;
     };
