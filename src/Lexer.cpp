@@ -13,6 +13,39 @@ namespace Langite {
     Token Lexer::NextToken() {
 Start:
         SourceLocation startLocation = Location;
+
+        if (CurrentChar() == '/') {
+            NextChar();
+            if (CurrentChar() == '/') {
+                while (CurrentChar() != '\n') {
+                    NextChar();
+                }
+            } else if (CurrentChar() == '*') {
+                NextChar();
+                size_t depth = 1;
+                while (depth > 0 && CurrentChar() != '\n') {
+                    if (CurrentChar() == '/') {
+                        NextChar();
+                        if (CurrentChar() == '*') {
+                            NextChar();
+                            depth++;
+                        }
+                    } else if (CurrentChar() == '*') {
+                        NextChar();
+                        if (CurrentChar() == '/') {
+                            NextChar();
+                            depth--;
+                        }
+                    } else {
+                        NextChar();
+                    }
+                }
+            } else {
+                Location = startLocation;
+            }
+            goto Start;
+        }
+
         switch (CurrentChar()) {
 #define TOKEN_KIND(kind, string)
 #define TOKEN_KIND_KEYWORD(kind, string)
@@ -353,7 +386,7 @@ Start:
         }
     }
 
-    char Lexer::CurrentChar() {
+    char Lexer::CurrentChar() const {
         if (Location.Position < Source.length())
             return Source[Location.Position];
         return '\0';

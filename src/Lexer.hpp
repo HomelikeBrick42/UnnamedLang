@@ -9,7 +9,7 @@ namespace Langite {
         Lexer(std::string_view filepath, std::string_view source);
         Token NextToken();
     private:
-        char CurrentChar();
+        char CurrentChar() const;
         char NextChar();
     private:
         SourceLocation Location;
