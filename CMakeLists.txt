@@ -5,10 +5,13 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(
         Langite
+        src/Ast.hpp
         src/CompileError.hpp
         src/Lexer.cpp
         src/Lexer.hpp
         src/Main.cpp
+        src/Parsing.cpp
+        src/Parsing.hpp
         src/SourceLocation.hpp
         src/Token.cpp
         src/Token.hpp)

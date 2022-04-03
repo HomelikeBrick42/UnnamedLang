@@ -8,6 +8,8 @@ namespace Langite {
     public:
         Lexer(std::string_view filepath, std::string_view source);
         Token NextToken();
+        Token PeekToken() const;
+        TokenKind PeekKind() const;
     private:
         char CurrentChar() const;
         char NextChar();

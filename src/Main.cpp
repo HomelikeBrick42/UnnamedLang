@@ -2,13 +2,16 @@
 #include "Token.hpp"
 #include "Lexer.hpp"
 #include "CompileError.hpp"
+#include "Ast.hpp"
+#include "Parsing.hpp"
 
 #include <iostream>
 
 using namespace Langite;
 
 int main(int, char**) {
-    Lexer lexer{ "test.lang", R"###(
+    std::string_view filepath = "test.lang";
+    std::string_view source   = R"###(
 const foo = 5
 
 const do_something = func(a: int, b: int): int {
@@ -44,14 +47,10 @@ test@0 <- 5
 test@(the_length-1) <- the_length
 
 const the_length = test.length // test.length is a constant
-)###" };
+)###";
     try {
-        while (true) {
-            Token token = lexer.NextToken();
-            std::cout << TokenKind_ToString(token.Kind) << std::endl;
-            if (token.Kind == TokenKind::EndOfFile)
-                break;
-        }
+        Ast file = ParseFile(filepath, source);
+        (void)file;
     } catch (CompileError e) {
         std::cerr << e.Location.Filepath << ':' << e.Location.Line << ':' << e.Location.Column
                   << ": " << e.Message << std::endl;

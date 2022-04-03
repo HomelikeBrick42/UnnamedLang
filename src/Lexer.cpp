@@ -386,6 +386,15 @@ Start:
         }
     }
 
+    Token Lexer::PeekToken() const {
+        Lexer copy = *this;
+        return copy.NextToken();
+    }
+
+    TokenKind Lexer::PeekKind() const {
+        return PeekToken().Kind;
+    }
+
     char Lexer::CurrentChar() const {
         if (Location.Position < Source.length())
             return Source[Location.Position];
