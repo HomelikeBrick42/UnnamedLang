@@ -50,7 +50,7 @@ const the_length = test.length // test.length is a constant
 )###";
     try {
         std::unique_ptr<AstFile> file = ParseFile(filepath, source);
-        (void)file;
+        DumpAst(*file);
     } catch (CompileError e) {
         std::cerr << e.Location.Filepath << ':' << e.Location.Line << ':' << e.Location.Column
                   << ": " << e.Message << std::endl;

@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 add_executable(
         Langite
+        src/Ast.cpp
         src/Ast.hpp
         src/CompileError.hpp
         src/Lexer.cpp
