@@ -13,7 +13,7 @@ namespace Langite {
             }
         }
     public:
-        virtual void Visit(AstFile& ast) {
+        virtual void Visit(AstFile& ast) override {
             PrintIndent();
             std::cout << "- File" << std::endl;
             Indent++;
@@ -27,7 +27,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstBlock& ast) {
+        virtual void Visit(AstBlock& ast) override {
             PrintIndent();
             std::cout << "- Block" << std::endl;
             Indent++;
@@ -41,7 +41,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstUnary& ast) {
+        virtual void Visit(AstUnary& ast) override {
             PrintIndent();
             std::cout << "- Unary" << std::endl;
             Indent++;
@@ -56,7 +56,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstBinary& ast) {
+        virtual void Visit(AstBinary& ast) override {
             PrintIndent();
             std::cout << "- Binary" << std::endl;
             Indent++;
@@ -76,7 +76,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstFieldAccess& ast) {
+        virtual void Visit(AstFieldAccess& ast) override {
             PrintIndent();
             std::cout << "- Field Access" << std::endl;
             Indent++;
@@ -91,7 +91,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstIndex& ast) {
+        virtual void Visit(AstIndex& ast) override {
             PrintIndent();
             std::cout << "- Index" << std::endl;
             Indent++;
@@ -108,7 +108,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstCall& ast) {
+        virtual void Visit(AstCall& ast) override {
             PrintIndent();
             std::cout << "- Call" << std::endl;
             Indent++;
@@ -127,7 +127,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstGenericInstantiation& ast) {
+        virtual void Visit(AstGenericInstantiation& ast) override {
             PrintIndent();
             std::cout << "- Generic Instantiation" << std::endl;
             Indent++;
@@ -146,7 +146,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstParenthesisedExpression& ast) {
+        virtual void Visit(AstParenthesisedExpression& ast) override {
             PrintIndent();
             std::cout << "- Parenthesised Expression" << std::endl;
             Indent++;
@@ -158,12 +158,13 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstDeclaration& ast) {
+        virtual void Visit(AstDeclaration& ast) override {
             PrintIndent();
-            std::cout << "- Declaration" << std::endl;
+            std::cout << "- Declaration: " << static_cast<void*>(&ast) << std::endl;
             Indent++;
             PrintIndent();
-            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\'' << std::endl;
+            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\''
+                      << std::endl;
             PrintIndent();
             std::cout << "Type:" << std::endl;
             Indent++;
@@ -172,12 +173,13 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstConstDeclaration& ast) {
+        virtual void Visit(AstConstDeclaration& ast) override {
             PrintIndent();
-            std::cout << "- Const Declaration" << std::endl;
+            std::cout << "- Const Declaration: " << static_cast<void*>(&ast) << std::endl;
             Indent++;
             PrintIndent();
-            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\'' << std::endl;
+            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\''
+                      << std::endl;
             if (ast.GenericParameters) {
                 PrintIndent();
                 std::cout << "Generic Parameters:" << std::endl;
@@ -202,35 +204,39 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstName& ast) {
+        virtual void Visit(AstName& ast) override {
             PrintIndent();
             std::cout << "- Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\''
                       << std::endl;
+            Indent++;
+            PrintIndent();
+            std::cout << "Resolved Declaration: " << ast.ResolvedDeclaration << std::endl;
+            Indent--;
         }
 
-        virtual void Visit(AstWildcard&) {
+        virtual void Visit(AstWildcard&) override {
             PrintIndent();
             std::cout << "- Wildcard" << std::endl;
         }
 
-        virtual void Visit(AstInteger& ast) {
+        virtual void Visit(AstInteger& ast) override {
             PrintIndent();
             std::cout << "- Integer: " << std::get<size_t>(ast.IntegerToken.Data) << std::endl;
         }
 
-        virtual void Visit(AstFloat& ast) {
+        virtual void Visit(AstFloat& ast) override {
             PrintIndent();
             std::cout << "- Float: " << std::get<double>(ast.FloatToken.Data) << std::endl;
         }
 
-        virtual void Visit(AstString& ast) {
+        virtual void Visit(AstString& ast) override {
             PrintIndent();
             auto& string = std::get<std::vector<char>>(ast.StringToken.Data);
             std::cout << "- String: \"" << std::string_view{ string.data(), string.size() } << '"'
                       << std::endl;
         }
 
-        virtual void Visit(AstFunction& ast) {
+        virtual void Visit(AstFunction& ast) override {
             PrintIndent();
             std::cout << "- Function" << std::endl;
             Indent++;
@@ -256,7 +262,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstProcedure& ast) {
+        virtual void Visit(AstProcedure& ast) override {
             PrintIndent();
             std::cout << "- Procedure" << std::endl;
             Indent++;
@@ -282,7 +288,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstReturn& ast) {
+        virtual void Visit(AstReturn& ast) override {
             PrintIndent();
             std::cout << "- Return" << std::endl;
             Indent++;
@@ -296,7 +302,7 @@ namespace Langite {
             Indent--;
         }
 
-        virtual void Visit(AstIf& ast) {
+        virtual void Visit(AstIf& ast) override {
             PrintIndent();
             std::cout << "- If" << std::endl;
             Indent++;
@@ -317,6 +323,17 @@ namespace Langite {
                 (*ast.ElseScope)->Accept(*this);
                 Indent--;
             }
+            Indent--;
+        }
+
+        virtual void Visit(AstBuiltin& ast) override {
+            PrintIndent();
+            std::cout << "- Builtin" << std::endl;
+            Indent++;
+            PrintIndent();
+            auto& string = std::get<std::vector<char>>(ast.StringToken.Data);
+            std::cout << "String: \"" << std::string_view{ string.data(), string.size() } << '"'
+                      << std::endl;
             Indent--;
         }
     };

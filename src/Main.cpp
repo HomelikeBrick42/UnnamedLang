@@ -4,6 +4,7 @@
 #include "CompileError.hpp"
 #include "Ast.hpp"
 #include "Parsing.hpp"
+#include "Resolver.hpp"
 
 #include <iostream>
 
@@ -12,6 +13,21 @@ using namespace Langite;
 int main(int, char**) {
     std::string_view filepath = "test.lang";
     std::string_view source   = R"###(
+const void = __builtin "void"
+const type = __builtin "type"
+const bool = __builtin "bool"
+const int = __builtin "int"
+const float = __builtin "float"
+const string = __builtin "string"
+const Array = __builtin "Array"
+const true = __builtin "true"
+const false = __builtin "false"
+
+// temporary
+const print = __builtin "print"
+const stdin = __builtin "stdin"
+const read_line_from_console = __builtin "read_line_from_console"
+
 const foo = 5
 
 const do_something = func(a: int, b: int): int {
@@ -50,6 +66,8 @@ const the_length = test.length // test.length is a constant
 )###";
     try {
         std::unique_ptr<AstFile> file = ParseFile(filepath, source);
+        NameResolver nameResolver;
+        file->Accept(nameResolver);
         DumpAst(*file);
     } catch (CompileError e) {
         std::cerr << e.Location.Filepath << ':' << e.Location.Line << ':' << e.Location.Column

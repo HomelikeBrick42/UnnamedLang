@@ -18,6 +18,7 @@
     TOKEN_KIND_KEYWORD(Return, "return")                                 \
     TOKEN_KIND_KEYWORD(If, "if")                                         \
     TOKEN_KIND_KEYWORD(Else, "else")                                     \
+    TOKEN_KIND_KEYWORD(Builtin, "__builtin")                             \
     TOKEN_KIND_SINGLE(Newline, "newline", '\n')                          \
     TOKEN_KIND_SINGLE(OpenParenthesis, "(", '(')                         \
     TOKEN_KIND_SINGLE(CloseParenthesis, ")", ')')                        \

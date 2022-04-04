@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Token.hpp"
+#include "Types.hpp"
 
 #include <variant>
 #include <optional>
@@ -28,6 +29,7 @@ namespace Langite {
     struct AstProcedure;
     struct AstReturn;
     struct AstIf;
+    struct AstBuiltin;
 
     class AstVisitor {
     public:
@@ -52,6 +54,7 @@ namespace Langite {
         virtual void Visit(AstProcedure& ast)               = 0;
         virtual void Visit(AstReturn& ast)                  = 0;
         virtual void Visit(AstIf& ast)                      = 0;
+        virtual void Visit(AstBuiltin& ast)                 = 0;
     };
 
     struct Ast {
@@ -202,6 +205,7 @@ namespace Langite {
         Token NameToken;
         Token ColonToken;
         std::unique_ptr<Ast> Type;
+        bool IsGenericParameter = false;
 
         AstDeclaration(Token nameToken, Token colonToken, std::unique_ptr<Ast> type)
             : NameToken(nameToken), ColonToken(colonToken), Type(std::move(type)) {}
@@ -249,8 +253,9 @@ namespace Langite {
 
     struct AstName: Ast {
         Token NameToken;
+        Ast* ResolvedDeclaration;
 
-        AstName(Token nameToken) : NameToken(nameToken) {}
+        AstName(Token nameToken) : NameToken(nameToken), ResolvedDeclaration(nullptr) {}
 
         virtual void Accept(AstVisitor& visitor) override {
             return visitor.Visit(*this);
@@ -384,6 +389,18 @@ namespace Langite {
             , ThenBlock(std::move(thenBlock))
             , ElseToken(elseToken)
             , ElseScope(std::move(elseScope)) {}
+
+        virtual void Accept(AstVisitor& visitor) override {
+            return visitor.Visit(*this);
+        }
+    };
+
+    struct AstBuiltin: Ast {
+        Token BuiltinToken;
+        Token StringToken;
+
+        AstBuiltin(Token builtinToken, Token stringToken)
+            : BuiltinToken(builtinToken), StringToken(stringToken) {}
 
         virtual void Accept(AstVisitor& visitor) override {
             return visitor.Visit(*this);

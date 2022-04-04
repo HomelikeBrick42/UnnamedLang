@@ -87,7 +87,9 @@ namespace Langite {
                     openSquareBracketToken = lexer.NextToken();
                     genericParameters      = std::vector<std::unique_ptr<AstDeclaration>>{};
                     while (lexer.PeekKind() != TokenKind::CloseSquareBracket) {
-                        genericParameters->push_back(ParseDeclaration(lexer));
+                        std::unique_ptr<AstDeclaration> genericParameter = ParseDeclaration(lexer);
+                        genericParameter->IsGenericParameter             = true;
+                        genericParameters->push_back(std::move(genericParameter));
                         ExpectCommaOrNewline(lexer);
                     }
                     closeSquareBracketToken = ExpectToken(lexer, TokenKind::CloseSquareBracket);
@@ -193,6 +195,12 @@ namespace Langite {
 
             case TokenKind::If:
                 return ParseIf(lexer);
+
+            case TokenKind::Builtin: {
+                Token builtinToken = lexer.NextToken();
+                Token stringToken  = ExpectToken(lexer, TokenKind::String);
+                return std::make_unique<AstBuiltin>(builtinToken, stringToken);
+            }
 
             case TokenKind::OpenBrace:
                 return ParseBlock(lexer);

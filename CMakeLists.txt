@@ -13,7 +13,10 @@ add_executable(
         src/Main.cpp
         src/Parsing.cpp
         src/Parsing.hpp
+        src/Resolver.cpp
+        src/Resolver.hpp
         src/SourceLocation.hpp
         src/Token.cpp
-        src/Token.hpp)
+        src/Token.hpp
+        src/Types.hpp)
 target_compile_options(Langite PRIVATE -Wall -Wextra -Werror)
