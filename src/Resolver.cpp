@@ -100,19 +100,23 @@ namespace Langite {
     }
 
     void NameResolver::Visit(AstFunction& ast) {
+        Constants.push_back({});
         auto oldVariables = std::move(Variables);
         Variables.clear();
         Variables.push_back({});
         AstSearcher::Visit(ast);
         Variables = std::move(oldVariables);
+        Constants.pop_back();
     }
 
     void NameResolver::Visit(AstProcedure& ast) {
+        Constants.push_back({});
         auto oldVariables = Variables;
         Variables.erase(Variables.begin() + 1, Variables.end());
         Variables.push_back({});
         AstSearcher::Visit(ast);
         Variables = std::move(oldVariables);
+        Constants.pop_back();
     }
 
 }
