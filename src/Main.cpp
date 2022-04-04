@@ -20,8 +20,8 @@ const int = __builtin "int"
 const float = __builtin "float"
 const string = __builtin "string"
 const Array = __builtin "Array"
-const true = __builtin "true"
-const false = __builtin "false"
+const true = 0 == 0
+const false = 0 != 0
 
 // temporary
 const print = __builtin "print"
