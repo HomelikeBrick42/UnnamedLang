@@ -1,4 +1,4 @@
-#include "Resolver.hpp"
+#include "Resolvers.hpp"
 #include "CompileError.hpp"
 
 #include <cassert>
@@ -13,9 +13,9 @@ namespace Langite {
         virtual void Visit(AstFile&) override {}
         virtual void Visit(AstBlock&) override {}
 
+        virtual void Visit(AstDeclaration&) override {}
         virtual void Visit(AstConstDeclaration& ast) override {
             ConstDeclarations.push_back(&ast);
-            AstSearcher::Visit(ast);
         }
 
         virtual void Visit(AstFunction&) override {}
@@ -65,7 +65,19 @@ namespace Langite {
         } else {
             Variables[Variables.size() - 1][name] = &ast;
         }
+        Constants.push_back({});
+        Variables.push_back({});
         AstSearcher::Visit(ast);
+        Constants.pop_back();
+        Variables.pop_back();
+    }
+
+    void NameResolver::Visit(AstConstDeclaration& ast) {
+        Constants.push_back({});
+        Variables.push_back({});
+        AstSearcher::Visit(ast);
+        Constants.pop_back();
+        Variables.pop_back();
     }
 
     void NameResolver::Visit(AstName& ast) {

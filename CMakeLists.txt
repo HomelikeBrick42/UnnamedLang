@@ -13,8 +13,8 @@ add_executable(
         src/Main.cpp
         src/Parsing.cpp
         src/Parsing.hpp
-        src/Resolver.cpp
-        src/Resolver.hpp
+        src/Resolvers.cpp
+        src/Resolvers.hpp
         src/SourceLocation.hpp
         src/Token.cpp
         src/Token.hpp

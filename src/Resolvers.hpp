@@ -14,6 +14,7 @@ namespace Langite {
         virtual void Visit(AstFile& ast) override;
         virtual void Visit(AstBlock& ast) override;
         virtual void Visit(AstDeclaration& ast) override;
+        virtual void Visit(AstConstDeclaration& ast) override;
         virtual void Visit(AstName& ast) override;
         virtual void Visit(AstFunction& ast) override;
         virtual void Visit(AstProcedure& ast) override;

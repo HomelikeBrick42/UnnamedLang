@@ -57,7 +57,6 @@ namespace Langite {
         virtual void Visit(AstBuiltin& ast)                 = 0;
     };
 
-
     class AstSearcher: public AstVisitor {
     public:
         virtual ~AstSearcher() = default;

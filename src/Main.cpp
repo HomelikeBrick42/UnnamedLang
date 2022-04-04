@@ -4,7 +4,7 @@
 #include "CompileError.hpp"
 #include "Ast.hpp"
 #include "Parsing.hpp"
-#include "Resolver.hpp"
+#include "Resolvers.hpp"
 
 #include <iostream>
 
