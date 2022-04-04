@@ -25,7 +25,6 @@ const false = 0 != 0
 
 // temporary
 const print = __builtin "print"
-const stdin = __builtin "stdin"
 const read_line_from_console = __builtin "read_line_from_console"
 
 const foo = 5
@@ -36,7 +35,7 @@ const do_something = func(a: int, b: int): int {
 
 const greet_user = proc(): void {
     print("What is your name: ")
-    name: string <- read_line_from_console(stdin)
+    name: string <- read_line_from_console()
     print("Hello, %\n", name)
 }
 

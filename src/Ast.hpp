@@ -57,6 +57,33 @@ namespace Langite {
         virtual void Visit(AstBuiltin& ast)                 = 0;
     };
 
+
+    class AstSearcher: public AstVisitor {
+    public:
+        virtual ~AstSearcher() = default;
+        virtual void Visit(AstFile& ast) override;
+        virtual void Visit(AstBlock& ast) override;
+        virtual void Visit(AstUnary& ast) override;
+        virtual void Visit(AstBinary& ast) override;
+        virtual void Visit(AstFieldAccess& ast) override;
+        virtual void Visit(AstIndex& ast) override;
+        virtual void Visit(AstCall& ast) override;
+        virtual void Visit(AstGenericInstantiation& ast) override;
+        virtual void Visit(AstParenthesisedExpression& ast) override;
+        virtual void Visit(AstDeclaration& ast) override;
+        virtual void Visit(AstConstDeclaration& ast) override;
+        virtual void Visit(AstName&) override;
+        virtual void Visit(AstWildcard&) override;
+        virtual void Visit(AstInteger&) override;
+        virtual void Visit(AstFloat&) override;
+        virtual void Visit(AstString&) override;
+        virtual void Visit(AstFunction& ast) override;
+        virtual void Visit(AstProcedure& ast) override;
+        virtual void Visit(AstReturn& ast) override;
+        virtual void Visit(AstIf& ast) override;
+        virtual void Visit(AstBuiltin&) override;
+    };
+
     struct Ast {
         virtual ~Ast()                           = default;
         virtual void Accept(AstVisitor& visitor) = 0;

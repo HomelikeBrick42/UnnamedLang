@@ -4,6 +4,103 @@
 
 namespace Langite {
 
+    void AstSearcher::Visit(AstFile& ast) {
+        for (auto& expression : ast.Expressions)
+            expression->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstBlock& ast) {
+        for (auto& expression : ast.Expressions)
+            expression->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstUnary& ast) {
+        ast.Operand->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstBinary& ast) {
+        ast.Left->Accept(*this);
+        ast.Right->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstFieldAccess& ast) {
+        ast.Operand->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstIndex& ast) {
+        ast.Operand->Accept(*this);
+        ast.Indexer->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstCall& ast) {
+        ast.Operand->Accept(*this);
+        for (auto& argument : ast.Arguments)
+            argument->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstGenericInstantiation& ast) {
+        ast.Operand->Accept(*this);
+        for (auto& genericArgument : ast.GenericArguments)
+            genericArgument->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstParenthesisedExpression& ast) {
+        ast.Expression->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstDeclaration& ast) {
+        ast.Type->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstConstDeclaration& ast) {
+        if (ast.GenericParameters)
+            for (auto& genericParameter : *ast.GenericParameters)
+                genericParameter->Accept(*this);
+        if (ast.Type)
+            (*ast.Type)->Accept(*this);
+        ast.Value->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstName&) {}
+
+    void AstSearcher::Visit(AstWildcard&) {}
+
+    void AstSearcher::Visit(AstInteger&) {}
+
+    void AstSearcher::Visit(AstFloat&) {}
+
+    void AstSearcher::Visit(AstString&) {}
+
+    void AstSearcher::Visit(AstFunction& ast) {
+        for (auto& parameter : ast.Parameters)
+            parameter->Accept(*this);
+        ast.ReturnType->Accept(*this);
+        if (ast.Body)
+            (*ast.Body)->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstProcedure& ast) {
+        for (auto& parameter : ast.Parameters)
+            parameter->Accept(*this);
+        ast.ReturnType->Accept(*this);
+        if (ast.Body)
+            (*ast.Body)->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstReturn& ast) {
+        if (ast.Value)
+            (*ast.Value)->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstIf& ast) {
+        ast.Condition->Accept(*this);
+        ast.ThenBlock->Accept(*this);
+        if (ast.ElseScope)
+            (*ast.ElseScope)->Accept(*this);
+    }
+
+    void AstSearcher::Visit(AstBuiltin&) {}
+
     class AstDumper: public AstVisitor {
         size_t Indent = 0;
 
