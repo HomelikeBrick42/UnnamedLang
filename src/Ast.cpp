@@ -163,7 +163,7 @@ namespace Langite {
             std::cout << "- Declaration" << std::endl;
             Indent++;
             PrintIndent();
-            std::cout << "Name: " << std::get<std::string_view>(ast.NameToken.Data) << std::endl;
+            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\'' << std::endl;
             PrintIndent();
             std::cout << "Type:" << std::endl;
             Indent++;
@@ -177,7 +177,7 @@ namespace Langite {
             std::cout << "- Const Declaration" << std::endl;
             Indent++;
             PrintIndent();
-            std::cout << "Name: " << std::get<std::string_view>(ast.NameToken.Data) << std::endl;
+            std::cout << "Name: '" << std::get<std::string_view>(ast.NameToken.Data) << '\'' << std::endl;
             if (ast.GenericParameters) {
                 PrintIndent();
                 std::cout << "Generic Parameters:" << std::endl;
