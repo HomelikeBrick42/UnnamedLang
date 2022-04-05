@@ -18,5 +18,6 @@ add_executable(
         src/SourceLocation.hpp
         src/Token.cpp
         src/Token.hpp
+        src/Types.cpp
         src/Types.hpp)
 target_compile_options(Langite PRIVATE -Wall -Wextra -Werror)

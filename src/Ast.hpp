@@ -84,6 +84,8 @@ namespace Langite {
     };
 
     struct Ast {
+        std::shared_ptr<Type> ResolvedType = nullptr;
+
         virtual ~Ast()                           = default;
         virtual void Accept(AstVisitor& visitor) = 0;
     };
