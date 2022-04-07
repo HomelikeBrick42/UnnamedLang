@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Langite", "Langite\Langite.csproj", "{61164E9F-034F-4CC5-B875-B1E2F0A191F0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CLI", "CLI\CLI.csproj", "{A839803E-3F5E-4A51-850C-DFA1FA8040D6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{61164E9F-034F-4CC5-B875-B1E2F0A191F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{61164E9F-034F-4CC5-B875-B1E2F0A191F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{61164E9F-034F-4CC5-B875-B1E2F0A191F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{61164E9F-034F-4CC5-B875-B1E2F0A191F0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A839803E-3F5E-4A51-850C-DFA1FA8040D6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A839803E-3F5E-4A51-850C-DFA1FA8040D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A839803E-3F5E-4A51-850C-DFA1FA8040D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A839803E-3F5E-4A51-850C-DFA1FA8040D6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

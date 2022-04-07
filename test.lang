@@ -1,0 +1,50 @@
+const void = __builtin "void"
+const type = __builtin "type"
+const bool = __builtin "bool"
+const char = __builtin "char"
+const int = __builtin "int"
+const float = __builtin "float"
+const string = __builtin "string"
+const Array[T: type, length: int] = __builtin_array[T, length]
+const true = 0 == 0
+const false = 0 != 0
+
+// temporary
+const print = __builtin "print"
+const read_line_from_console = __builtin "read_line_from_console"
+
+const foo = 5
+
+const do_something = func(a: int, b: int): int {
+    return a + b
+}
+
+const greet_user = proc(): void {
+    print("What is your name: ")
+    name: string <- read_line_from_console()
+    print("Hello, %\n", name)
+}
+
+const int_or_bool = func(condition: bool): type {
+    if condition {
+        return int
+    } else {
+        return bool
+    }
+}
+
+const identity[T: type] = func(value: T): T {
+    return value
+}
+
+bar: int <- identity[int](1 + 2 * 3)
+baz: string <- identity("hello")
+
+some_variable: int_or_bool(true)
+
+test: Array[int, 5]
+test@0 <- 5
+1 + 2 * 3 -> test@3
+test@(the_length-1) <- the_length
+
+const the_length = test.length // test.length is a constant
