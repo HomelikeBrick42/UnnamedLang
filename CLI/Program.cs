@@ -29,6 +29,7 @@ try
 #else
     var ast = Parser.Parse(filepath, source);
     NameResolver.Resolve(ast);
+    TypeResolver.Resolve(ast);
     Langite.Syntax.Ast.PrettyPrinter.Print(ast);
 #endif
 }

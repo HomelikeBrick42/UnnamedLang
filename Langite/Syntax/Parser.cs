@@ -269,6 +269,12 @@ namespace Langite.Syntax
                     return new Ast.String(stringToken);
                 }
 
+            case TokenKind.Wildcard:
+            {
+                var wildcardToken = _lexer.NextToken();
+                return new Ast.Wildcard(wildcardToken);
+            }
+
                 case TokenKind.Func:
                 {
                     var funcToken = _lexer.NextToken();

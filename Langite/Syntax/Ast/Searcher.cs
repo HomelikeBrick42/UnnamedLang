@@ -2,7 +2,7 @@
 
 namespace Langite.Syntax.Ast
 {
-    public class Searcher<U>: Visitor<ValueTuple, U>
+    public class Searcher<U> : Visitor<ValueTuple, U>
     {
         public override ValueTuple Visit(File file, U indent)
         {
@@ -49,6 +49,13 @@ namespace Langite.Syntax.Ast
         public override ValueTuple Visit(Name name, U indent)
         {
             foreach (var child in name.GetChildren())
+                child.Accept(this, indent);
+            return default;
+        }
+
+        public override ValueTuple Visit(Wildcard wildcard, U indent)
+        {
+            foreach (var child in wildcard.GetChildren())
                 child.Accept(this, indent);
             return default;
         }

@@ -22,10 +22,22 @@ namespace Langite.Syntax.Ast
             }
         }
 
-        public override ValueTuple Visit(File file, ulong indent)
+        private static void PrintHeader(Node node, ulong indent, string title)
         {
             PrintIndent(indent);
-            Console.WriteLine($"- File: '{file.Location.Filepath}'");
+            Console.WriteLine(title);
+            if (node.ResolvedType is not null)
+            {
+                PrintIndent(indent + 1);
+                Console.WriteLine("Resolved Type:");
+                PrintIndent(indent + 2);
+                Console.WriteLine(node.ResolvedType);
+            }
+        }
+
+        public override ValueTuple Visit(File file, ulong indent)
+        {
+            PrintHeader(file, indent, $"- File: '{file.Location.Filepath}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Expressions:");
             foreach (var expression in file.Expressions)
@@ -35,8 +47,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Unary unary, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Unary: '{unary.OperatorToken}'");
+            PrintHeader(unary, indent, $"- Unary: '{unary.OperatorToken}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Operand:");
             unary.Operand.Accept(this, indent + 2);
@@ -45,8 +56,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Binary binary, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Binary: '{binary.OperatorToken}'");
+            PrintHeader(binary, indent, $"- Binary: '{binary.OperatorToken}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Left:");
             binary.Left.Accept(this, indent + 2);
@@ -58,36 +68,37 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Integer integer, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Integer: {integer.IntegerToken.Value as long?}");
+            PrintHeader(integer, indent, $"- Integer: {integer.IntegerToken.Value as long?}");
             return default;
         }
 
         public override ValueTuple Visit(Float @float, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Float: {@float.FloatToken.Value as double?}");
+            PrintHeader(@float, indent, $"- Float: {@float.FloatToken.Value as double?}");
             return default;
         }
 
         public override ValueTuple Visit(String @string, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- String: \"{@string.StringToken.Value as string}\"");
+            PrintHeader(@string, indent, $"- String: \"{@string.StringToken.Value as string}\"");
             return default;
         }
 
         public override ValueTuple Visit(Name name, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Name: '{name.NameString}'");
+            PrintHeader(name, indent, $"- Name: '{name.NameString}'");
+            return default;
+        }
+        
+        public override ValueTuple Visit(Wildcard wildcard, ulong indent)
+        {
+            PrintHeader(wildcard, indent, $"- Wildcard");
             return default;
         }
 
         public override ValueTuple Visit(Declaration declaration, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Declaration: '{declaration.Name}'");
+            PrintHeader(declaration, indent, $"- Declaration: '{declaration.Name}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Type:");
             declaration.Type.Accept(this, indent + 2);
@@ -96,8 +107,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(GenericParameter genericParameter, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Generic Parameter: '{genericParameter.Name}'");
+            PrintHeader(genericParameter, indent, $"- Generic Parameter: '{genericParameter.Name}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Type:");
             genericParameter.Type.Accept(this, indent + 2);
@@ -106,8 +116,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(ConstDeclaration constDeclaration, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Const Declaration: '{constDeclaration.Name}'");
+            PrintHeader(constDeclaration, indent, $"- Const Declaration: '{constDeclaration.Name}'");
 
             if (constDeclaration.GenericParameters is not null)
             {
@@ -132,8 +141,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Function function, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Function");
+            PrintHeader(function, indent, $"- Function");
             PrintIndent(indent + 1);
             Console.WriteLine("Parameters:");
             foreach (var parameter in function.Parameters)
@@ -153,8 +161,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Procedure procedure, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Procedure");
+            PrintHeader(procedure, indent, $"- Procedure");
             PrintIndent(indent + 1);
             Console.WriteLine("Parameters:");
             foreach (var parameter in procedure.Parameters)
@@ -174,8 +181,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Block block, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Block");
+            PrintHeader(block, indent, $"- Block");
             PrintIndent(indent + 1);
             Console.WriteLine("Expressions:");
             foreach (var expression in block.Expressions)
@@ -185,8 +191,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Return @return, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Return");
+            PrintHeader(@return, indent, $"- Return");
             if (@return.Value is not null)
             {
                 PrintIndent(indent + 1);
@@ -199,8 +204,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(If @if, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- If");
+            PrintHeader(@if, indent, $"- If");
             PrintIndent(indent + 1);
             Console.WriteLine("Condition:");
             @if.Condition.Accept(this, indent + 2);
@@ -219,8 +223,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Call call, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Call");
+            PrintHeader(call, indent, $"- Call");
             PrintIndent(indent + 1);
             Console.WriteLine("Operand:");
             call.Operand.Accept(this, indent + 2);
@@ -233,8 +236,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(GenericInstantiation genericInstantiation, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- GenericInstantiation");
+            PrintHeader(genericInstantiation, indent, $"- GenericInstantiation");
             PrintIndent(indent + 1);
             Console.WriteLine("Operand:");
             genericInstantiation.Operand.Accept(this, indent + 2);
@@ -247,8 +249,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(ParenthesisedExpression parenthesisedExpression, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Parenthesised Expression");
+            PrintHeader(parenthesisedExpression, indent, $"- Parenthesised Expression");
             PrintIndent(indent + 1);
             Console.WriteLine("Expression:");
             parenthesisedExpression.Expression.Accept(this, indent + 2);
@@ -257,8 +258,7 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(FieldAccess fieldAccess, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Field Access: '{fieldAccess.Name}'");
+            PrintHeader(fieldAccess, indent, $"- Field Access: '{fieldAccess.Name}'");
             PrintIndent(indent + 1);
             Console.WriteLine("Operand:");
             fieldAccess.Operand.Accept(this, indent + 2);
@@ -267,15 +267,13 @@ namespace Langite.Syntax.Ast
 
         public override ValueTuple Visit(Builtin builtin, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine($"- Builtin: \"{builtin.StringToken.Value as string}\"");
+            PrintHeader(builtin, indent, $"- Builtin: \"{builtin.StringToken.Value as string}\"");
             return default;
         }
 
         public override ValueTuple Visit(BuiltinArray builtinArray, ulong indent)
         {
-            PrintIndent(indent);
-            Console.WriteLine("- Builtin Array");
+            PrintHeader(builtinArray, indent, $"- Builtin Array");
             PrintIndent(indent + 1);
             Console.WriteLine("Type:");
             builtinArray.InnerType.Accept(this, indent + 2);
