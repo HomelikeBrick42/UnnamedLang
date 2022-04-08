@@ -26,6 +26,7 @@ namespace Langite.Syntax.Ast
         {
             PrintIndent(indent);
             Console.WriteLine(title);
+            /*
             if (node.ResolvedType is not null)
             {
                 PrintIndent(indent + 1);
@@ -33,6 +34,7 @@ namespace Langite.Syntax.Ast
                 PrintIndent(indent + 2);
                 Console.WriteLine(node.ResolvedType);
             }
+            */
         }
 
         public override ValueTuple Visit(File file, ulong indent)
