@@ -6,13 +6,14 @@ namespace Langite.Syntax.Ast
 {
     public sealed class Name : Node
     {
+        public DeclarationBase? ResolvedDeclaration = null;
+
         public Name(Token nameToken)
         {
             NameToken = nameToken;
         }
 
         public Token NameToken { get; }
-        public DeclarationBase? ResolvedDeclaration = null;
 
         public string NameString => NameToken.Value as string ?? throw new InvalidOperationException();
 

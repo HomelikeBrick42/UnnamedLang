@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace Langite.Syntax.Ast
 {
-    public sealed class FieldAccess: Node
+    public sealed class FieldAccess : Node
     {
         public FieldAccess(Node operand, Token periodToken, Token nameToken)
         {
@@ -19,7 +19,7 @@ namespace Langite.Syntax.Ast
         public string Name => NameToken.Value as string ?? throw new InvalidOperationException();
 
         public override SourceLocation Location => PeriodToken.Location;
-        
+
         public override IEnumerable<Node> GetChildren()
         {
             yield return Operand;

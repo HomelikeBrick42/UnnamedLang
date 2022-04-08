@@ -2,12 +2,13 @@
 using Langite;
 using Langite.Resolving;
 using Langite.Syntax;
+using Langite.Syntax.Ast;
 using File = System.IO.File;
 
 if (args.Length != 1)
 {
     Console.ForegroundColor = ConsoleColor.Red;
-    Console.WriteLine($"Usage: langite.exe <file>");
+    Console.WriteLine("Usage: langite.exe <file>");
     Console.ResetColor();
     return 1;
 }
@@ -29,7 +30,7 @@ try
 #else
     var ast = Parser.Parse(filepath, source);
     NameResolver.Resolve(ast);
-    Langite.Syntax.Ast.PrettyPrinter.Print(ast);
+    PrettyPrinter.Print(ast);
 #endif
 }
 catch (CompileError e)

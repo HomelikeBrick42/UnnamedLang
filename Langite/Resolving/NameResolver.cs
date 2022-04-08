@@ -7,8 +7,8 @@ namespace Langite.Resolving
 {
     public sealed class NameResolver : Searcher<ValueTuple>
     {
-        private List<Dictionary<string, DeclarationBase>> _declarations;
         private readonly List<Dictionary<string, DeclarationBase>> _constDeclarations;
+        private List<Dictionary<string, DeclarationBase>> _declarations;
 
         private NameResolver()
         {
@@ -34,7 +34,7 @@ namespace Langite.Resolving
             node.Accept(nameResolver, default);
         }
 
-        public override ValueTuple Visit(Syntax.Ast.File file, ValueTuple indent)
+        public override ValueTuple Visit(File file, ValueTuple indent)
         {
             PushScope();
             foreach (var expression in file.Expressions)

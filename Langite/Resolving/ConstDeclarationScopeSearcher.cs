@@ -12,7 +12,7 @@ namespace Langite.Resolving
         {
             _constDeclarations = new List<ConstDeclaration>();
         }
-        
+
         public static IList<ConstDeclaration> Search(Node node)
         {
             var searcher = new ConstDeclarationScopeSearcher();
@@ -20,7 +20,7 @@ namespace Langite.Resolving
             return searcher._constDeclarations;
         }
 
-        public override ValueTuple Visit(Syntax.Ast.File file, ValueTuple indent)
+        public override ValueTuple Visit(File file, ValueTuple indent)
         {
             return default;
         }

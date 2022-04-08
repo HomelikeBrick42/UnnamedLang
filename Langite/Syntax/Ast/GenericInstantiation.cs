@@ -4,7 +4,8 @@ namespace Langite.Syntax.Ast
 {
     public sealed class GenericInstantiation : Node
     {
-        public GenericInstantiation(Node operand, Token openSquareBracketToken, IList<Node> genericArguments, Token closeSquareBracketToken)
+        public GenericInstantiation(Node operand, Token openSquareBracketToken, IList<Node> genericArguments,
+            Token closeSquareBracketToken)
         {
             Operand = operand;
             OpenSquareBracketToken = openSquareBracketToken;

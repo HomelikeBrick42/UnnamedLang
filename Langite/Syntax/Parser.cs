@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using Langite.Syntax.Ast;
 
 namespace Langite.Syntax
 {
@@ -13,15 +14,15 @@ namespace Langite.Syntax
             _lexer = new Lexer(filepath, source);
         }
 
-        public static Ast.File Parse(string filepath, string source)
+        public static File Parse(string filepath, string source)
         {
             var parser = new Parser(filepath, source);
             return parser.ParseFile();
         }
 
-        private Ast.File ParseFile()
+        private File ParseFile()
         {
-            var expressions = new List<Ast.Node>();
+            var expressions = new List<Node>();
             while (_lexer.PeekKind() != TokenKind.EndOfFile)
             {
                 AllowMultipleNewlines();
@@ -30,13 +31,13 @@ namespace Langite.Syntax
             }
 
             var endOfFileToken = ExpectToken(TokenKind.EndOfFile);
-            return new Ast.File(expressions, endOfFileToken);
+            return new File(expressions, endOfFileToken);
         }
 
-        private Ast.Block ParseBlock()
+        private Block ParseBlock()
         {
             var openBraceToken = ExpectToken(TokenKind.OpenBrace);
-            var expressions = new List<Ast.Node>();
+            var expressions = new List<Node>();
             while (_lexer.PeekKind() != TokenKind.CloseBrace)
             {
                 AllowMultipleNewlines();
@@ -45,24 +46,24 @@ namespace Langite.Syntax
             }
 
             var closeBraceToken = ExpectToken(TokenKind.CloseBrace);
-            return new Ast.Block(openBraceToken, expressions, closeBraceToken);
+            return new Block(openBraceToken, expressions, closeBraceToken);
         }
 
-        private Ast.Declaration ParseDeclaration()
+        private Declaration ParseDeclaration()
         {
             var nameToken = ExpectOneOf(new[] {TokenKind.Name, TokenKind.Wildcard});
             var colonToken = ExpectToken(TokenKind.Colon);
             var type = ParseLeastExpression();
-            return new Ast.Declaration(nameToken, colonToken, type);
+            return new Declaration(nameToken, colonToken, type);
         }
 
-        private Ast.If ParseIf()
+        private If ParseIf()
         {
             var ifToken = ExpectToken(TokenKind.If);
             var condition = ParseExpression();
             var thenBlock = ParseBlock();
             Token? elseToken = null;
-            Ast.Node? elseNode = null;
+            Node? elseNode = null;
             if (_lexer.PeekKind() == TokenKind.Else)
             {
                 elseToken = _lexer.NextToken();
@@ -72,29 +73,29 @@ namespace Langite.Syntax
                     elseNode = ParseBlock();
             }
 
-            return new Ast.If(ifToken, condition, thenBlock, elseToken, elseNode);
+            return new If(ifToken, condition, thenBlock, elseToken, elseNode);
         }
 
-        private Ast.Node ParseExpression()
+        private Node ParseExpression()
         {
             return ParseBinaryExpression(0);
         }
 
-        private Ast.Node ParseLeastExpression()
+        private Node ParseLeastExpression()
         {
             return ParseBinaryExpression(uint.MaxValue);
         }
 
-        private Ast.Node ParseBinaryExpression(uint parentPrecedence)
+        private Node ParseBinaryExpression(uint parentPrecedence)
         {
-            Ast.Node left;
+            Node left;
             var unaryPrecedence = _lexer.PeekKind().GetUnaryOperatorPrecedence();
             if (unaryPrecedence > 0)
             {
                 var operatorToken = _lexer.NextToken();
                 AllowNewline();
                 var operand = ParseBinaryExpression(unaryPrecedence);
-                left = new Ast.Unary(operatorToken, operand);
+                left = new Unary(operatorToken, operand);
             }
             else
             {
@@ -108,7 +109,7 @@ namespace Langite.Syntax
                     {
                         var openParenthesisToken = _lexer.NextToken();
                         AllowNewline();
-                        var arguments = new List<Ast.Node>();
+                        var arguments = new List<Node>();
                         while (_lexer.PeekKind() != TokenKind.CloseParenthesis)
                         {
                             arguments.Add(ParseExpression());
@@ -116,7 +117,7 @@ namespace Langite.Syntax
                         }
 
                         var closeParenthesisToken = ExpectToken(TokenKind.CloseParenthesis);
-                        left = new Ast.Call(left, openParenthesisToken, arguments, closeParenthesisToken);
+                        left = new Call(left, openParenthesisToken, arguments, closeParenthesisToken);
                         break;
                     }
 
@@ -125,7 +126,7 @@ namespace Langite.Syntax
                     {
                         var openSquareBracketToken = _lexer.NextToken();
                         AllowNewline();
-                        var genericArguments = new List<Ast.Node>();
+                        var genericArguments = new List<Node>();
                         while (_lexer.PeekKind() != TokenKind.CloseSquareBracket)
                         {
                             genericArguments.Add(ParseExpression());
@@ -133,7 +134,7 @@ namespace Langite.Syntax
                         }
 
                         var closeSquareBracketToken = ExpectToken(TokenKind.CloseSquareBracket);
-                        left = new Ast.GenericInstantiation(left, openSquareBracketToken, genericArguments,
+                        left = new GenericInstantiation(left, openSquareBracketToken, genericArguments,
                             closeSquareBracketToken);
                         break;
                     }
@@ -142,7 +143,7 @@ namespace Langite.Syntax
                     {
                         var periodToken = _lexer.NextToken();
                         var nameToken = ExpectToken(TokenKind.Name);
-                        left = new Ast.FieldAccess(left, periodToken, nameToken);
+                        left = new FieldAccess(left, periodToken, nameToken);
                         break;
                     }
 
@@ -155,7 +156,7 @@ namespace Langite.Syntax
                         var operatorToken = _lexer.NextToken();
                         AllowNewline();
                         var right = ParseBinaryExpression(binaryPrecedence);
-                        left = new Ast.Binary(left, operatorToken, right);
+                        left = new Binary(left, operatorToken, right);
                         break;
                     }
                 }
@@ -165,7 +166,7 @@ namespace Langite.Syntax
             return left;
         }
 
-        private Ast.Node ParsePrimaryExpression()
+        private Node ParsePrimaryExpression()
         {
             switch (_lexer.PeekKind())
             {
@@ -176,7 +177,7 @@ namespace Langite.Syntax
                     var expression = ParseExpression();
                     AllowNewline();
                     var closeParenthesisToken = ExpectToken(TokenKind.CloseParenthesis);
-                    return new Ast.ParenthesisedExpression(openParenthesisToken, expression, closeParenthesisToken);
+                    return new ParenthesisedExpression(openParenthesisToken, expression, closeParenthesisToken);
                 }
 
                 case TokenKind.Const:
@@ -184,19 +185,19 @@ namespace Langite.Syntax
                     var constToken = _lexer.NextToken();
                     var nameToken = ExpectOneOf(new[] {TokenKind.Name, TokenKind.Wildcard});
                     Token? openSquareBracketToken = null;
-                    IList<Ast.GenericParameter>? genericParameters = null;
+                    IList<GenericParameter>? genericParameters = null;
                     Token? closeSquareBracketToken = null;
                     if (_lexer.PeekKind() == TokenKind.OpenSquareBracket)
                     {
                         openSquareBracketToken = _lexer.NextToken();
                         AllowNewline();
-                        genericParameters = new List<Ast.GenericParameter>();
+                        genericParameters = new List<GenericParameter>();
                         while (_lexer.PeekKind() != TokenKind.CloseSquareBracket)
                         {
                             var name = ExpectToken(TokenKind.Name);
                             var colon = ExpectToken(TokenKind.Colon);
                             var typ = ParseExpression();
-                            genericParameters.Add(new Ast.GenericParameter(name, colon, typ));
+                            genericParameters.Add(new GenericParameter(name, colon, typ));
                             ExpectCommaOrNewline();
                         }
 
@@ -204,7 +205,7 @@ namespace Langite.Syntax
                     }
 
                     Token? colonToken = null;
-                    Ast.Node? type = null;
+                    Node? type = null;
                     if (_lexer.PeekKind() == TokenKind.Colon)
                     {
                         colonToken = _lexer.NextToken();
@@ -215,7 +216,7 @@ namespace Langite.Syntax
                     var equalsToken = ExpectToken(TokenKind.Equal);
                     AllowNewline();
                     var value = ParseExpression();
-                    return new Ast.ConstDeclaration(constToken, nameToken, openSquareBracketToken, genericParameters,
+                    return new ConstDeclaration(constToken, nameToken, openSquareBracketToken, genericParameters,
                         closeSquareBracketToken, colonToken, type, equalsToken, value);
                 }
 
@@ -223,7 +224,7 @@ namespace Langite.Syntax
                 {
                     var builtinToken = _lexer.NextToken();
                     var stringToken = ExpectToken(TokenKind.String);
-                    return new Ast.Builtin(builtinToken, stringToken);
+                    return new Builtin(builtinToken, stringToken);
                 }
 
                 case TokenKind.BuiltinArray:
@@ -234,7 +235,7 @@ namespace Langite.Syntax
                     ExpectCommaOrNewline();
                     var length = ParseExpression();
                     var closeSquareBracketToken = ExpectToken(TokenKind.CloseSquareBracket);
-                    return new Ast.BuiltinArray(builtinArrayToken, openSquareBracketToken, type, length,
+                    return new BuiltinArray(builtinArrayToken, openSquareBracketToken, type, length,
                         closeSquareBracketToken);
                 }
 
@@ -245,41 +246,41 @@ namespace Langite.Syntax
                     {
                         var colonToken = _lexer.NextToken();
                         var type = ParseLeastExpression();
-                        return new Ast.Declaration(nameToken, colonToken, type);
+                        return new Declaration(nameToken, colonToken, type);
                     }
 
-                    return new Ast.Name(nameToken);
+                    return new Name(nameToken);
                 }
 
                 case TokenKind.Integer:
                 {
                     var integerToken = _lexer.NextToken();
-                    return new Ast.Integer(integerToken);
+                    return new Integer(integerToken);
                 }
 
                 case TokenKind.Float:
                 {
                     var floatToken = _lexer.NextToken();
-                    return new Ast.Float(floatToken);
+                    return new Float(floatToken);
                 }
 
                 case TokenKind.String:
                 {
                     var stringToken = _lexer.NextToken();
-                    return new Ast.String(stringToken);
+                    return new String(stringToken);
                 }
 
-            case TokenKind.Wildcard:
-            {
-                var wildcardToken = _lexer.NextToken();
-                return new Ast.Wildcard(wildcardToken);
-            }
+                case TokenKind.Wildcard:
+                {
+                    var wildcardToken = _lexer.NextToken();
+                    return new Wildcard(wildcardToken);
+                }
 
                 case TokenKind.Func:
                 {
                     var funcToken = _lexer.NextToken();
                     var openParenthesisToken = ExpectToken(TokenKind.OpenParenthesis);
-                    var parameters = new List<Ast.Declaration>();
+                    var parameters = new List<Declaration>();
                     AllowNewline();
                     while (_lexer.PeekKind() != TokenKind.CloseParenthesis)
                     {
@@ -291,11 +292,11 @@ namespace Langite.Syntax
                     var colonToken = ExpectToken(TokenKind.Colon);
                     AllowNewline();
                     var type = ParseLeastExpression();
-                    Ast.Block? body = null;
+                    Block? body = null;
                     if (_lexer.PeekKind() == TokenKind.OpenBrace)
                         body = ParseBlock();
 
-                    return new Ast.Function(funcToken, openParenthesisToken, parameters, closeParenthesisToken,
+                    return new Function(funcToken, openParenthesisToken, parameters, closeParenthesisToken,
                         colonToken, type, body);
                 }
 
@@ -303,7 +304,7 @@ namespace Langite.Syntax
                 {
                     var procToken = _lexer.NextToken();
                     var openParenthesisToken = ExpectToken(TokenKind.OpenParenthesis);
-                    var parameters = new List<Ast.Declaration>();
+                    var parameters = new List<Declaration>();
                     AllowNewline();
                     while (_lexer.PeekKind() != TokenKind.CloseParenthesis)
                     {
@@ -315,23 +316,23 @@ namespace Langite.Syntax
                     var colonToken = ExpectToken(TokenKind.Colon);
                     AllowNewline();
                     var type = ParseLeastExpression();
-                    Ast.Block? body = null;
+                    Block? body = null;
                     if (_lexer.PeekKind() == TokenKind.OpenBrace)
                         body = ParseBlock();
 
-                    return new Ast.Procedure(procToken, openParenthesisToken, parameters, closeParenthesisToken,
+                    return new Procedure(procToken, openParenthesisToken, parameters, closeParenthesisToken,
                         colonToken, type, body);
                 }
 
                 case TokenKind.Return:
                 {
                     var returnToken = _lexer.NextToken();
-                    Ast.Node? value = null;
+                    Node? value = null;
                     var current = _lexer.PeekKind();
                     if (current is not TokenKind.CloseBrace and not TokenKind.CloseParenthesis and not
                         TokenKind.CloseSquareBracket and not TokenKind.Newline and not TokenKind.EndOfFile)
                         value = ParseExpression();
-                    return new Ast.Return(returnToken, value);
+                    return new Return(returnToken, value);
                 }
 
                 case TokenKind.If:
@@ -361,7 +362,7 @@ namespace Langite.Syntax
             var token = _lexer.NextToken();
             if (kinds.Contains(token.Kind))
                 return token;
-            var message = $"Expected one of [";
+            var message = "Expected one of [";
             var first = true;
             foreach (var kind in kinds)
             {

@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace Langite.Syntax.Ast
 {
-    public sealed class Wildcard: Node
+    public sealed class Wildcard : Node
     {
         public Wildcard(Token wildcardToken)
         {
@@ -13,7 +13,7 @@ namespace Langite.Syntax.Ast
         public Token WildcardToken { get; }
 
         public override SourceLocation Location => WildcardToken.Location;
-        
+
         public override IEnumerable<Node> GetChildren()
         {
             return Enumerable.Empty<Node>();

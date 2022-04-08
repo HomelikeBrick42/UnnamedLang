@@ -5,14 +5,23 @@ namespace Langite.Syntax
 {
     public sealed class Lexer
     {
-        public string Filepath { get; }
-        public string Source { get; }
+        private int _column = 1;
+        private int _line = 1;
+
+        private int _position = 0;
 
         public Lexer(string filepath, string source)
         {
             Filepath = filepath;
             Source = source;
         }
+
+        public string Filepath { get; }
+        public string Source { get; }
+
+        private char CurrentChar => _position < Source.Length
+            ? Source[_position]
+            : '\0';
 
         public Token PeekToken()
         {
@@ -214,14 +223,6 @@ namespace Langite.Syntax
                 throw new CompileError(startLocation, $"Unexpected character '{chr}'");
             }
         }
-
-        private int _position = 0;
-        private int _line = 1;
-        private int _column = 1;
-
-        private char CurrentChar => _position < Source.Length
-            ? Source[_position]
-            : '\0';
 
         private char NextChar()
         {
