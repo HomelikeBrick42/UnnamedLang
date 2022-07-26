@@ -1,0 +1,11 @@
+[package]
+name = "langite"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+derive_more = "0.99.17"
+enum-as-inner = "0.5.0"
+phf = { version = "0.11", features = ["macros"] }

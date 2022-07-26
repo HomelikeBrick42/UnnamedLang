@@ -1,0 +1,15 @@
+proc print_int(value: int): void #compiler
+proc println(): void #compiler
+
+proc main(): void {
+	let foo = 1 + 2 * 3
+	print_int(foo)
+	println()
+
+	var i <- 0
+	while i <= 10 {
+		print_int(i)
+		println()
+		i <- i + 1
+	}
+}
