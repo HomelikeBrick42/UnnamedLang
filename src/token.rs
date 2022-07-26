@@ -53,6 +53,12 @@ pub enum TokenKind {
     LetKeyword,
     #[display(fmt = "var")]
     VarKeyword,
+    #[display(fmt = "if")]
+    IfKeyword,
+    #[display(fmt = "else")]
+    ElseKeyword,
+    #[display(fmt = "while")]
+    WhileKeyword,
 }
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]

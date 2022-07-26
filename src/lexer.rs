@@ -32,6 +32,9 @@ static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
     "proc" => TokenKind::ProcKeyword,
     "let" => TokenKind::LetKeyword,
     "var" => TokenKind::VarKeyword,
+    "if" => TokenKind::IfKeyword,
+    "else" => TokenKind::ElseKeyword,
+    "while" => TokenKind::WhileKeyword,
 };
 
 static DIRECTIVES: phf::Map<&'static str, TokenKind> = phf_map! {
