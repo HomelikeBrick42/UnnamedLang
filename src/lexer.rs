@@ -64,9 +64,13 @@ static DOUBLE_CHAR_TOKENS: phf::Map<char, phf::Map<char, TokenKind>> = phf_map! 
     },
     '<' => phf_map! {
         '=' => TokenKind::LessThanEqual,
+        '-' => TokenKind::LeftArrow,
     },
     '>' => phf_map! {
         '=' => TokenKind::GreaterThanEqual,
+    },
+    '-' =>phf_map! {
+        '>' => TokenKind::RightArrow,
     },
 };
 

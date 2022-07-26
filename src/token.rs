@@ -25,6 +25,10 @@ pub enum TokenKind {
     Colon,
     #[display(fmt = "=")]
     Equal,
+    #[display(fmt = "<-")]
+    LeftArrow,
+    #[display(fmt = "->")]
+    RightArrow,
     #[display(fmt = "+")]
     Plus,
     #[display(fmt = "-")]
