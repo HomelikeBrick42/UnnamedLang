@@ -28,7 +28,11 @@ pub struct Lexer {
     source: Rc<Vec<char>>,
 }
 
-static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {};
+static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
+    "proc" => TokenKind::ProcKeyword,
+    "let" => TokenKind::LetKeyword,
+    "var" => TokenKind::VarKeyword,
+};
 
 static DIRECTIVES: phf::Map<&'static str, TokenKind> = phf_map! {
     "compiler" => TokenKind::CompilerDirective,
@@ -80,7 +84,7 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        while self.peek_char().is_whitespace() {
+        while self.peek_char() == ' ' || self.peek_char() == '\t' {
             self.next_char();
         }
 

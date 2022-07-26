@@ -43,6 +43,12 @@ pub enum TokenKind {
     GreaterThanEqual,
     #[display(fmt = "#compiler")]
     CompilerDirective,
+    #[display(fmt = "proc")]
+    ProcKeyword,
+    #[display(fmt = "let")]
+    LetKeyword,
+    #[display(fmt = "var")]
+    VarKeyword,
 }
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
