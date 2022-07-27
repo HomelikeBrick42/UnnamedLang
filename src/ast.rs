@@ -9,6 +9,10 @@ pub enum Ast {
     File(Rc<AstFile>),
     Procedure(Rc<AstProcedure>),
     Scope(Rc<AstScope>),
+    Let(Rc<AstLet>),
+    Var(Rc<AstVar>),
+    LeftAssign(Rc<AstLeftAssign>),
+    RightAssign(Rc<AstRightAssign>),
     If(Rc<AstIf>),
     While(Rc<AstWhile>),
     Call(Rc<AstCall>),
@@ -24,6 +28,10 @@ impl Ast {
             Ast::File(file) => &file.location,
             Ast::Procedure(procedure) => &procedure.location,
             Ast::Scope(scope) => &scope.location,
+            Ast::Let(lett) => &lett.location,
+            Ast::Var(var) => &var.location,
+            Ast::LeftAssign(left_assign) => &left_assign.location,
+            Ast::RightAssign(right_assign) => &right_assign.location,
             Ast::If(iff) => &iff.location,
             Ast::While(whilee) => &whilee.location,
             Ast::Call(call) => &call.location,
@@ -50,7 +58,7 @@ pub struct Parameter {
 
 #[derive(Clone, Debug, EnumAsInner)]
 pub enum ProcedureBody {
-    CompilerGenerated,
+    CompilerGenerated(SourceSpan),
     Scope(Rc<AstScope>),
 }
 
@@ -59,6 +67,7 @@ pub struct AstProcedure {
     pub location: SourceSpan,
     pub name: String,
     pub parameters: Vec<Rc<Parameter>>,
+    pub return_type: Ast,
     pub body: ProcedureBody,
 }
 
@@ -66,6 +75,36 @@ pub struct AstProcedure {
 pub struct AstScope {
     pub location: SourceSpan,
     pub statements: Vec<Ast>,
+}
+
+#[derive(Clone, Debug)]
+pub struct AstLet {
+    pub location: SourceSpan,
+    pub name: String,
+    pub typ: Option<Ast>,
+    pub value: Ast,
+}
+
+#[derive(Clone, Debug)]
+pub struct AstVar {
+    pub location: SourceSpan,
+    pub name: String,
+    pub typ: Option<Ast>,
+    pub value: Ast,
+}
+
+#[derive(Clone, Debug)]
+pub struct AstLeftAssign {
+    pub location: SourceSpan,
+    pub operand: Ast,
+    pub value: Ast,
+}
+
+#[derive(Clone, Debug)]
+pub struct AstRightAssign {
+    pub location: SourceSpan,
+    pub value: Ast,
+    pub operand: Ast,
 }
 
 #[derive(Clone, Debug)]
@@ -80,7 +119,7 @@ pub struct AstIf {
 pub struct AstWhile {
     pub location: SourceSpan,
     pub condition: Ast,
-    pub looping_statement: Ast,
+    pub body: Rc<AstScope>,
 }
 
 #[derive(Clone, Debug)]

@@ -23,6 +23,8 @@ pub enum TokenKind {
     CloseBrace,
     #[display(fmt = ":")]
     Colon,
+    #[display(fmt = ",")]
+    Comma,
     #[display(fmt = "=")]
     Equal,
     #[display(fmt = "<-")]

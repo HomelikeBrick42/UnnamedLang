@@ -49,6 +49,7 @@ static SINGLE_CHAR_TOKENS: phf::Map<char, TokenKind> = phf_map! {
     '{' => TokenKind::OpenBrace,
     '}' => TokenKind::CloseBrace,
     ':' => TokenKind::Colon,
+    ',' => TokenKind::Comma,
     '=' => TokenKind::Equal,
     '+' => TokenKind::Plus,
     '-' => TokenKind::Minus,
@@ -91,8 +92,41 @@ impl Lexer {
     }
 
     pub fn next_token(&mut self) -> Result<Token, LexerError> {
-        while self.peek_char() == ' ' || self.peek_char() == '\t' {
-            self.next_char();
+        'whitespace_loop: loop {
+            if self.peek_char() == ' ' || self.peek_char() == '\t' {
+                self.next_char();
+                continue 'whitespace_loop;
+            }
+
+            if self.peek_char() == '/' {
+                let old_location = self.location.clone();
+                self.next_char();
+                if self.peek_char() == '*' {
+                    self.next_char();
+                    let mut depth = 1;
+                    while depth != 0 {
+                        let chr = self.next_char();
+                        if chr == '*' && self.peek_char() == '/' {
+                            self.next_char();
+                            depth -= 1;
+                        } else if chr == '/' && self.peek_char() == '*' {
+                            self.next_char();
+                            depth += 1;
+                        }
+                    }
+                    continue 'whitespace_loop;
+                } else if self.peek_char() == '/' {
+                    self.next_char();
+                    while self.peek_char() != '\r' && self.peek_char() != '\n' {
+                        self.next_char();
+                    }
+                    continue 'whitespace_loop;
+                } else {
+                    self.location = old_location;
+                }
+            }
+
+            break 'whitespace_loop;
         }
 
         let start_location = self.location.clone();

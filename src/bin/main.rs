@@ -11,6 +11,7 @@ fn usage(f: &mut dyn Write) -> Result<(), std::io::Error> {
         f,
         "    dump_tokens <filepath> - prints all the tokens in the file"
     )?;
+    writeln!(f, "    dump_ast <filepath>    - prints the ast")?;
     Ok(())
 }
 
@@ -60,6 +61,28 @@ fn main() {
                         writeln!(stderr, "{}", error).unwrap();
                         std::process::exit(1)
                     }
+                }
+            }
+        }
+
+        "dump_ast" => {
+            let filepath = args.next().unwrap_or_else(|| {
+                writeln!(stderr, "Expected a filepath").unwrap();
+                usage(stderr).unwrap();
+                std::process::exit(1)
+            });
+            let source = std::fs::read_to_string(filepath.clone()).unwrap_or_else(|e| {
+                writeln!(stderr, "Unable to read file '{}': {}", filepath, e).unwrap();
+                usage(stderr).unwrap();
+                std::process::exit(1)
+            });
+            match parse_file(filepath, &source) {
+                Ok(ast_file) => {
+                    writeln!(stdout, "{:#?}", ast_file).unwrap();
+                }
+                Err(error) => {
+                    writeln!(stderr, "{}", error).unwrap();
+                    std::process::exit(1)
                 }
             }
         }

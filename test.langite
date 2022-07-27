@@ -8,7 +8,13 @@ proc main(): void {
 
 	var i <- 0
 	while i <= 10 {
-		print_int(i)
+		if i > 5 {
+			print_int(i * 2)
+		} else if i > 7 {
+			print_int(i + 10)
+		} else {
+			print_int(i)
+		}
 		println()
 		i <- i + 1
 	}
