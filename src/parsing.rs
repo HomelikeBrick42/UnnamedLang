@@ -60,6 +60,8 @@ pub fn parse_file(filepath: String, source: &str) -> Result<Rc<AstFile>, Parsing
 
 pub fn parse_statement(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
     Ok(match lexer.peek_token()?.kind {
+        TokenKind::OpenBrace => Ast::Scope(parse_scope(lexer)?),
+
         TokenKind::ProcKeyword => {
             let proc_token = expect_token(lexer, TokenKind::ProcKeyword)?;
             let name_token = expect_token(lexer, TokenKind::Name)?;
