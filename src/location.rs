@@ -19,6 +19,7 @@ pub struct SourceSpan {
 impl SourceSpan {
     pub fn combine_spans(a: &SourceSpan, b: &SourceSpan) -> SourceSpan {
         assert_eq!(a.filepath, b.filepath);
+        assert!(a.start.position <= b.end.position);
         SourceSpan {
             filepath: a.filepath.clone(),
             start: a.start.clone(),

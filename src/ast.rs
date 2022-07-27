@@ -38,7 +38,6 @@ impl Ast {
 #[derive(Clone, Debug)]
 pub struct AstFile {
     pub location: SourceSpan,
-    pub filepath: String,
     pub statements: Vec<Ast>,
 }
 
@@ -92,7 +91,10 @@ pub struct AstCall {
 }
 
 #[derive(Clone, Debug, EnumAsInner)]
-pub enum UnaryOperator {}
+pub enum UnaryOperator {
+    Identity,
+    Negation,
+}
 
 #[derive(Clone, Debug)]
 pub struct AstUnary {
@@ -102,7 +104,16 @@ pub struct AstUnary {
 }
 
 #[derive(Clone, Debug, EnumAsInner)]
-pub enum BinaryOperator {}
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    LessThan,
+    GreaterThan,
+    LessThanEqual,
+    GreaterThanEqual,
+}
 
 #[derive(Clone, Debug)]
 pub struct AstBinary {

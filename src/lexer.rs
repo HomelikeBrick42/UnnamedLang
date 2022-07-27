@@ -24,7 +24,7 @@ pub enum LexerError {
 #[derive(Clone)]
 pub struct Lexer {
     filepath: String,
-    location: SourceLocation,
+    pub location: SourceLocation,
     source: Rc<Vec<char>>,
 }
 
@@ -322,9 +322,9 @@ mod tests {
                 location: SourceSpan {
                     filepath: filepath.to_string(),
                     start: SourceLocation {
-                        position: 1,
+                        position: 2,
                         line: 1,
-                        column: 2
+                        column: 3
                     },
                     end: SourceLocation {
                         position: 3,
@@ -342,9 +342,9 @@ mod tests {
                 location: SourceSpan {
                     filepath: filepath.to_string(),
                     start: SourceLocation {
-                        position: 3,
+                        position: 4,
                         line: 1,
-                        column: 4
+                        column: 5
                     },
                     end: SourceLocation {
                         position: 5,
@@ -362,9 +362,9 @@ mod tests {
                 location: SourceSpan {
                     filepath: filepath.to_string(),
                     start: SourceLocation {
-                        position: 5,
+                        position: 6,
                         line: 1,
-                        column: 6
+                        column: 7
                     },
                     end: SourceLocation {
                         position: 7,
