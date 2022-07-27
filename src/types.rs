@@ -1,7 +1,7 @@
 use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
-#[derive(Clone, Debug, Display, EnumAsInner)]
+#[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
 pub enum Type {
     #[display(fmt = "void")]
     Void,

@@ -59,7 +59,7 @@ pub struct Parameter {
 #[derive(Clone, Debug, EnumAsInner)]
 pub enum ProcedureBody {
     CompilerGenerated(SourceSpan),
-    Scope(Rc<AstScope>),
+    Scope(Ast),
 }
 
 #[derive(Clone, Debug)]
@@ -119,7 +119,7 @@ pub struct AstIf {
 pub struct AstWhile {
     pub location: SourceSpan,
     pub condition: Ast,
-    pub body: Rc<AstScope>,
+    pub body: Ast,
 }
 
 #[derive(Clone, Debug)]

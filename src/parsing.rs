@@ -99,7 +99,7 @@ pub fn parse_statement(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 TokenKind::CompilerDirective => ProcedureBody::CompilerGenerated(
                     expect_token(lexer, TokenKind::CompilerDirective)?.location,
                 ),
-                _ => ProcedureBody::Scope(parse_scope(lexer)?),
+                _ => ProcedureBody::Scope(Ast::Scope(parse_scope(lexer)?)),
             };
 
             Ast::Procedure(Rc::new(AstProcedure {
@@ -107,7 +107,7 @@ pub fn parse_statement(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     &proc_token.location,
                     match &body {
                         ProcedureBody::CompilerGenerated(location) => location,
-                        ProcedureBody::Scope(scope) => &scope.location,
+                        ProcedureBody::Scope(scope) => &scope.get_location(),
                     },
                 ),
                 name: name_token.data.as_string().unwrap().clone(),
@@ -164,7 +164,7 @@ pub fn parse_statement(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             Ast::While(Rc::new(AstWhile {
                 location: SourceSpan::combine_spans(&while_token.location, &body.location),
                 condition,
-                body,
+                body: Ast::Scope(body),
             }))
         }
 

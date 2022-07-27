@@ -4,20 +4,22 @@ use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 #[derive(Clone, Debug)]
-pub struct Program {
-    pub procedures: HashMap<String, Procedure>,
+pub struct BytecodeProgram {
+    pub procedures: HashMap<String, BytecodeProcedure>,
 }
 
 #[derive(Clone, Debug)]
-pub struct Procedure {
-    pub instructions: Vec<Instruction>,
+pub struct BytecodeProcedure {
+    pub instructions: Vec<BytecodeInstruction>,
     pub max_registers: usize,
 }
 
 #[derive(Clone, Debug, Display, EnumAsInner)]
-pub enum Instruction {
+pub enum BytecodeInstruction {
     #[display(fmt = "set {}, {}", dest, value)]
-    Set { dest: usize, value: Value },
+    Set { dest: usize, value: BytecodeValue },
+    #[display(fmt = "mov {}, {}", dest, src)]
+    Move { dest: usize, src: usize },
     #[display(fmt = "add {}, {}, {}", dest, a, b)]
     Add { dest: usize, a: usize, b: usize },
     #[display(fmt = "sub {}, {}, {}", dest, a, b)]
@@ -44,10 +46,14 @@ pub enum Instruction {
     },
     #[display(fmt = "ret {}", reg)]
     Return { reg: usize },
+    #[display(fmt = "print_int {}", reg)]
+    PrintInt { reg: usize },
+    #[display(fmt = "println")]
+    PrintLn,
 }
 
 #[derive(Clone, Debug, Display, EnumAsInner)]
-pub enum Value {
+pub enum BytecodeValue {
     #[display(fmt = "void")]
     Void,
     #[display(fmt = "{}", _0)]
