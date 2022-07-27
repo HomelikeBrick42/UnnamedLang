@@ -8,10 +8,10 @@ proc main(): void {
 
 	var i <- 0
 	while i <= 10 {
-		if i > 5 {
-			print_int(i * 2)
-		} else if i > 7 {
+		if i > 7 {
 			print_int(i + 10)
+		} else if i > 5 {
+			print_int(i * 2)
 		} else {
 			print_int(i)
 		}

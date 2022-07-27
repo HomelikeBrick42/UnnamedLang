@@ -13,6 +13,7 @@ fn usage(f: &mut dyn Write) -> Result<(), std::io::Error> {
     )?;
     writeln!(f, "    dump_ast <filepath>    - prints the ast")?;
     writeln!(f, "    dump_ir <filepath>     - prints the ir")?;
+    writeln!(f, "    run <filepath>         - executes the file")?;
     Ok(())
 }
 
@@ -111,6 +112,25 @@ fn main() {
                 }
                 writeln!(stdout, "end_proc {}", name).unwrap();
             }
+        }
+
+        "run" => {
+            let filepath = args.next().unwrap_or_else(|| {
+                writeln!(stderr, "Expected a filepath").unwrap();
+                usage(stderr).unwrap();
+                std::process::exit(1)
+            });
+            let source = std::fs::read_to_string(filepath.clone()).unwrap_or_else(|e| {
+                writeln!(stderr, "Unable to read file '{}': {}", filepath, e).unwrap();
+                usage(stderr).unwrap();
+                std::process::exit(1)
+            });
+            let file = parse_file(filepath, &source).unwrap_or_else(|error| {
+                writeln!(stderr, "{}", error).unwrap();
+                std::process::exit(1)
+            });
+            let program = resolve_file(&file);
+            execute_program(&program, stdout);
         }
 
         _ => {

@@ -2,7 +2,7 @@ use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     Ast, AstFile, AstLet, AstProcedure, AstVar, BinaryOperator, BytecodeInstruction,
-    BytecodeProcedure, BytecodeProgram, BytecodeValue, ProcedureBody, Type,
+    BytecodeProcedure, BytecodeProgram, BytecodeValue, Parameter, ProcedureBody, Type,
 };
 
 pub fn resolve_file(file: &AstFile) -> BytecodeProgram {
@@ -42,7 +42,17 @@ fn resolve_procedure(
     let mut instructions = vec![];
     let mut max_registers = procedure.parameters.len();
     let mut next_register = procedure.parameters.len();
-    let mut variables = HashMap::new();
+    let mut variables = procedure
+        .parameters
+        .iter()
+        .enumerate()
+        .map(|(i, parameter)| {
+            (
+                parameter.name.clone(),
+                Declaration::Parameter(parameter.clone(), eval_type(&parameter.typ), i),
+            )
+        })
+        .collect();
 
     match &procedure.body {
         ProcedureBody::CompilerGenerated(_) => match &procedure.name as &str {
@@ -94,6 +104,7 @@ fn resolve_procedure(
 
 #[derive(Clone)]
 enum Declaration {
+    Parameter(Rc<Parameter>, Type, usize),
     Let(Rc<AstLet>, Type, usize),
     Var(Rc<AstVar>, Type, usize),
 }
@@ -108,7 +119,9 @@ fn resolve_ast(
 ) -> Option<(usize, Type)> {
     match ast {
         Ast::File(_) => unreachable!(),
+
         Ast::Procedure(_procedure) => todo!("nested procedures arent supported yet"),
+
         Ast::Scope(scope) => {
             let mut next_register_copy = *next_register;
             let mut variables_copy = variables.clone();
@@ -270,6 +283,10 @@ fn resolve_ast(
             )
             .unwrap();
             // TODO: type checking
+            instructions.push(BytecodeInstruction::LogicalNot {
+                dest: condition,
+                reg: condition,
+            });
             let condition_jump_location = instructions.len();
             instructions.push(BytecodeInstruction::JumpIf {
                 location: usize::MAX,
@@ -317,6 +334,10 @@ fn resolve_ast(
             )
             .unwrap();
             // TODO: type checking
+            instructions.push(BytecodeInstruction::LogicalNot {
+                dest: condition,
+                reg: condition,
+            });
             let condition_jump_location = instructions.len();
             instructions.push(BytecodeInstruction::JumpIf {
                 location: usize::MAX,
@@ -475,6 +496,7 @@ fn resolve_ast(
 
         Ast::Name(name) => Some(if let Some(decl) = variables.get(&name.name) {
             match decl {
+                Declaration::Parameter(_, typ, reg) => (*reg, typ.clone()),
                 Declaration::Let(_, typ, reg) => (*reg, typ.clone()),
                 Declaration::Var(_, typ, reg) => (*reg, typ.clone()),
             }
