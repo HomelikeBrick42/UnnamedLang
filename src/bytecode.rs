@@ -32,6 +32,8 @@ pub enum BytecodeInstruction {
     LessThan { dest: usize, a: usize, b: usize },
     #[display(fmt = "gt {}, {}, {}", dest, a, b)]
     GreaterThan { dest: usize, a: usize, b: usize },
+    #[display(fmt = "neg {}, {}", dest, reg)]
+    Negate { dest: usize, reg: usize },
     #[display(fmt = "not {}, {}", dest, reg)]
     LogicalNot { dest: usize, reg: usize },
     #[display(fmt = "jmp {}", location)]

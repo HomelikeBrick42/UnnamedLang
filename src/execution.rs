@@ -51,6 +51,9 @@ pub fn execute_procedure(
                     registers[*a].as_int().unwrap() > registers[*b].as_int().unwrap(),
                 )
             }
+            BytecodeInstruction::Negate { dest, reg } => {
+                registers[*dest] = BytecodeValue::Int(-registers[*reg].as_int().unwrap())
+            }
             BytecodeInstruction::LogicalNot { dest, reg } => {
                 registers[*dest] = BytecodeValue::Bool(!registers[*reg].as_bool().unwrap())
             }

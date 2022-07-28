@@ -104,7 +104,10 @@ fn main() {
                 writeln!(stderr, "{}", error).unwrap();
                 std::process::exit(1)
             });
-            let program = resolve_file(&file);
+            let program = resolve_file(&file).unwrap_or_else(|error| {
+                writeln!(stderr, "{}", error).unwrap();
+                std::process::exit(1)
+            });
             for (name, procedure) in program.procedures {
                 writeln!(stdout, "proc {}, {}", name, procedure.max_registers).unwrap();
                 for instruction in procedure.instructions {
@@ -129,7 +132,10 @@ fn main() {
                 writeln!(stderr, "{}", error).unwrap();
                 std::process::exit(1)
             });
-            let program = resolve_file(&file);
+            let program = resolve_file(&file).unwrap_or_else(|error| {
+                writeln!(stderr, "{}", error).unwrap();
+                std::process::exit(1)
+            });
             execute_program(&program, stdout);
         }
 

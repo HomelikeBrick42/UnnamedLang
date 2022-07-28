@@ -1,44 +1,124 @@
 use std::{collections::HashMap, rc::Rc};
 
+use derive_more::Display;
+use enum_as_inner::EnumAsInner;
+
 use crate::{
     Ast, AstFile, AstLet, AstProcedure, AstVar, BinaryOperator, BytecodeInstruction,
-    BytecodeProcedure, BytecodeProgram, BytecodeValue, Parameter, ProcedureBody, Type,
+    BytecodeProcedure, BytecodeProgram, BytecodeValue, Parameter, ProcedureBody, SourceSpan, Type,
+    UnaryOperator,
 };
 
-pub fn resolve_file(file: &AstFile) -> BytecodeProgram {
+#[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
+pub enum ResolvingError {
+    #[display(
+        fmt = "{}: '{}' has already been declared at {}",
+        new_declaration,
+        name,
+        old_declaration
+    )]
+    Redeclaration {
+        name: String,
+        old_declaration: SourceSpan,
+        new_declaration: SourceSpan,
+    },
+    #[display(fmt = "{}: '{}' has not been declared", name_location, name)]
+    UndeclaredName {
+        name: String,
+        name_location: SourceSpan,
+    },
+    #[display(fmt = "{}: Type '{}' has not been declared", name_location, name)]
+    UndeclaredType {
+        name: String,
+        name_location: SourceSpan,
+    },
+    #[display(fmt = "{}: Expected a type", location)]
+    ExpectedType { location: SourceSpan },
+    #[display(
+        fmt = "{}: Integer '{}' is too big for type '{}'",
+        integer_location,
+        value,
+        typ
+    )]
+    IntegerTooBigForType {
+        value: u128,
+        typ: Type,
+        integer_location: SourceSpan,
+    },
+    #[display(
+        fmt = "{}: Expected type '{}', but got type '{}'",
+        location,
+        expected_typ,
+        typ
+    )]
+    ExpectedTypeButGotType {
+        location: SourceSpan,
+        expected_typ: Type,
+        typ: Type,
+    },
+    #[display(
+        fmt = "{}: Expected a procedure type, but got type '{}'",
+        location,
+        typ
+    )]
+    ExpectedProcedure { location: SourceSpan, typ: Type },
+    #[display(
+        fmt = "{}: Procedure '{}' is already defined at {}",
+        new_location,
+        name,
+        old_location
+    )]
+    ProcedureAlreadyDefined {
+        new_location: SourceSpan,
+        old_location: SourceSpan,
+        name: String,
+    },
+    #[display(fmt = "{}: Only procedures are allowed at global scope", location)]
+    NonProcedureAtGlobalScope { location: SourceSpan },
+    #[display(fmt = "{}: Unknown #compiler procedure '{}'", location, name)]
+    UnknownCompilerProcedure { location: SourceSpan, name: String },
+}
+
+pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
     let mut procedures = HashMap::new();
     for statement in &file.statements {
         if let Some(procedure) = statement.as_procedure() {
-            if let Some(_original) = procedures.insert(procedure.name.clone(), {
-                let bytecode_procedure = resolve_procedure(procedure, &procedures);
+            if let Some((_, _, location)) = procedures.insert(procedure.name.clone(), {
+                let bytecode_procedure = resolve_procedure(procedure, &procedures)?;
                 let typ = Type::Procedure {
                     parameters: procedure
                         .parameters
                         .iter()
-                        .map(|parameter| eval_type(&parameter.typ))
-                        .collect(),
-                    return_type: Box::new(eval_type(&procedure.return_type)),
+                        .map(|parameter| Ok(eval_type(&parameter.typ)?))
+                        .collect::<Result<_, _>>()?,
+                    return_type: Box::new(eval_type(&procedure.return_type)?),
                 };
-                (bytecode_procedure, typ)
+                (bytecode_procedure, typ, procedure.location.clone())
             }) {
-                todo!("procedure has already been defined")
+                return Err(ResolvingError::ProcedureAlreadyDefined {
+                    new_location: procedure.location.clone(),
+                    old_location: location.clone(),
+                    name: procedure.name.clone(),
+                });
             }
         } else {
-            todo!("non procedure in global scope")
+            return Err(ResolvingError::NonProcedureAtGlobalScope {
+                location: statement.get_location().clone(),
+            });
         }
     }
-    BytecodeProgram {
+    Ok(BytecodeProgram {
         procedures: procedures
             .into_iter()
-            .map(|(name, (proc, _))| (name, proc))
+            .map(|(name, (proc, _, _))| (name, proc))
             .collect(),
-    }
+    })
 }
 
 fn resolve_procedure(
     procedure: &AstProcedure,
-    procedures: &HashMap<String, (BytecodeProcedure, Type)>,
-) -> BytecodeProcedure {
+    procedures: &HashMap<String, (BytecodeProcedure, Type, SourceSpan)>,
+) -> Result<BytecodeProcedure, ResolvingError> {
     let mut instructions = vec![];
     let mut max_registers = procedure.parameters.len();
     let mut next_register = procedure.parameters.len();
@@ -47,12 +127,16 @@ fn resolve_procedure(
         .iter()
         .enumerate()
         .map(|(i, parameter)| {
-            (
+            Ok((
                 parameter.name.clone(),
-                Declaration::Parameter(parameter.clone(), eval_type(&parameter.typ), i),
-            )
+                (
+                    Declaration::Parameter(parameter.clone()),
+                    eval_type(&parameter.typ)?,
+                    i,
+                ),
+            ))
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     match &procedure.body {
         ProcedureBody::CompilerGenerated(_) => match &procedure.name as &str {
@@ -76,7 +160,12 @@ fn resolve_procedure(
                 instructions.push(BytecodeInstruction::Return { reg: ret_value });
             }
 
-            _ => todo!("unknown builtin procedure"),
+            _ => {
+                return Err(ResolvingError::UnknownCompilerProcedure {
+                    location: procedure.location.clone(),
+                    name: procedure.name.clone(),
+                })
+            }
         },
         ProcedureBody::Scope(scope) => {
             resolve_ast(
@@ -86,7 +175,7 @@ fn resolve_procedure(
                 &mut next_register,
                 procedures,
                 &mut variables,
-            );
+            )?;
             let ret_value = allocate_register(&mut max_registers, &mut next_register);
             instructions.push(BytecodeInstruction::Set {
                 dest: ret_value,
@@ -96,17 +185,27 @@ fn resolve_procedure(
         }
     }
 
-    BytecodeProcedure {
+    Ok(BytecodeProcedure {
         instructions,
         max_registers,
-    }
+    })
 }
 
 #[derive(Clone)]
 enum Declaration {
-    Parameter(Rc<Parameter>, Type, usize),
-    Let(Rc<AstLet>, Type, usize),
-    Var(Rc<AstVar>, Type, usize),
+    Parameter(Rc<Parameter>),
+    Let(Rc<AstLet>),
+    Var(Rc<AstVar>),
+}
+
+impl Declaration {
+    fn get_location(&self) -> &SourceSpan {
+        match self {
+            Declaration::Parameter(parameter) => &parameter.location,
+            Declaration::Let(lett) => &lett.location,
+            Declaration::Var(var) => &var.location,
+        }
+    }
 }
 
 fn resolve_ast(
@@ -114,10 +213,10 @@ fn resolve_ast(
     instructions: &mut Vec<BytecodeInstruction>,
     max_registers: &mut usize,
     next_register: &mut usize,
-    procedures: &HashMap<String, (BytecodeProcedure, Type)>,
-    variables: &mut HashMap<String, Declaration>,
-) -> Option<(usize, Type)> {
-    match ast {
+    procedures: &HashMap<String, (BytecodeProcedure, Type, SourceSpan)>,
+    variables: &mut HashMap<String, (Declaration, Type, usize)>,
+) -> Result<Option<(usize, Type)>, ResolvingError> {
+    Ok(match ast {
         Ast::File(_) => unreachable!(),
 
         Ast::Procedure(_procedure) => todo!("nested procedures arent supported yet"),
@@ -133,7 +232,7 @@ fn resolve_ast(
                     &mut next_register_copy,
                     procedures,
                     &mut variables_copy,
-                );
+                )?;
             }
             None
         }
@@ -142,7 +241,7 @@ fn resolve_ast(
             let reg = allocate_register(max_registers, next_register);
 
             let decl_typ = if let Some(typ) = &lett.typ {
-                Some(eval_type(typ))
+                Some(eval_type(typ)?)
             } else {
                 None
             };
@@ -153,7 +252,7 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
                 dest: reg,
@@ -161,19 +260,30 @@ fn resolve_ast(
             });
 
             let typ = if let Some(typ) = decl_typ {
-                if typ != value_typ {
-                    todo!("types do not match")
-                }
+                expect_types_equal(&value_typ, &typ, lett.value.get_location())?;
                 typ
             } else {
                 value_typ
             };
-            if let Some(_original) = variables.insert(
-                lett.name.clone(),
-                Declaration::Let(lett.clone(), typ.clone(), reg),
-            ) {
-                todo!("variable was redeclared")
+
+            if let Some((variable, _, _)) = variables.get(&lett.name) {
+                return Err(ResolvingError::Redeclaration {
+                    name: lett.name.clone(),
+                    old_declaration: variable.get_location().clone(),
+                    new_declaration: lett.location.clone(),
+                });
+            } else if let Some((_, _, location)) = procedures.get(&lett.name) {
+                return Err(ResolvingError::Redeclaration {
+                    name: lett.name.clone(),
+                    old_declaration: location.clone(),
+                    new_declaration: lett.location.clone(),
+                });
             }
+
+            variables.insert(
+                lett.name.clone(),
+                (Declaration::Let(lett.clone()), typ.clone(), reg),
+            );
 
             Some((reg, typ))
         }
@@ -182,7 +292,7 @@ fn resolve_ast(
             let reg = allocate_register(max_registers, next_register);
 
             let decl_typ = if let Some(typ) = &var.typ {
-                Some(eval_type(typ))
+                Some(eval_type(typ)?)
             } else {
                 None
             };
@@ -193,7 +303,7 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
                 dest: reg,
@@ -201,43 +311,54 @@ fn resolve_ast(
             });
 
             let typ = if let Some(typ) = decl_typ {
-                if typ != value_typ {
-                    todo!("types do not match")
-                }
+                expect_types_equal(&value_typ, &typ, var.value.get_location())?;
                 typ
             } else {
                 value_typ
             };
-            if let Some(_original) = variables.insert(
-                var.name.clone(),
-                Declaration::Var(var.clone(), typ.clone(), reg),
-            ) {
-                todo!("variable was redeclared")
+
+            if let Some((variable, _, _)) = variables.get(&var.name) {
+                return Err(ResolvingError::Redeclaration {
+                    name: var.name.clone(),
+                    old_declaration: variable.get_location().clone(),
+                    new_declaration: var.location.clone(),
+                });
+            } else if let Some((_, _, location)) = procedures.get(&var.name) {
+                return Err(ResolvingError::Redeclaration {
+                    name: var.name.clone(),
+                    old_declaration: location.clone(),
+                    new_declaration: var.location.clone(),
+                });
             }
+
+            variables.insert(
+                var.name.clone(),
+                (Declaration::Var(var.clone()), typ.clone(), reg),
+            );
 
             Some((reg, typ))
         }
 
         Ast::LeftAssign(left_assign) => {
-            let (operand, _operand_typ) = resolve_ast(
+            let (operand, operand_typ) = resolve_ast(
                 &left_assign.operand,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            let (value, _value_typ) = resolve_ast(
+            let (value, value_typ) = resolve_ast(
                 &left_assign.value,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            // TODO: type checking
+            expect_types_equal(&value_typ, &operand_typ, &left_assign.location)?;
             instructions.push(BytecodeInstruction::Move {
                 dest: operand,
                 src: value,
@@ -246,25 +367,25 @@ fn resolve_ast(
         }
 
         Ast::RightAssign(right_assign) => {
-            let (value, _value_typ) = resolve_ast(
+            let (value, value_typ) = resolve_ast(
                 &right_assign.value,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            let (operand, _operand_typ) = resolve_ast(
+            let (operand, operand_typ) = resolve_ast(
                 &right_assign.operand,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            // TODO: type checking
+            expect_types_equal(&value_typ, &operand_typ, &right_assign.location)?;
             instructions.push(BytecodeInstruction::Move {
                 dest: operand,
                 src: value,
@@ -273,16 +394,16 @@ fn resolve_ast(
         }
 
         Ast::If(iff) => {
-            let (condition, _condition_typ) = resolve_ast(
+            let (condition, condition_typ) = resolve_ast(
                 &iff.condition,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            // TODO: type checking
+            expect_types_equal(&condition_typ, &Type::Bool, &iff.location)?;
             instructions.push(BytecodeInstruction::LogicalNot {
                 dest: condition,
                 reg: condition,
@@ -299,7 +420,7 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            );
+            )?;
             let jump_past_else_location = instructions.len();
             instructions.push(BytecodeInstruction::Jump {
                 location: usize::MAX,
@@ -316,7 +437,7 @@ fn resolve_ast(
                     next_register,
                     procedures,
                     variables,
-                );
+                )?;
             }
             *instructions[jump_past_else_location].as_jump_mut().unwrap() = instructions.len();
             None
@@ -324,16 +445,16 @@ fn resolve_ast(
 
         Ast::While(whilee) => {
             let jump_location = instructions.len();
-            let (condition, _condition_typ) = resolve_ast(
+            let (condition, condition_typ) = resolve_ast(
                 &whilee.condition,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            // TODO: type checking
+            expect_types_equal(&condition_typ, &Type::Bool, &whilee.location)?;
             instructions.push(BytecodeInstruction::LogicalNot {
                 dest: condition,
                 reg: condition,
@@ -350,7 +471,7 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            );
+            )?;
             instructions.push(BytecodeInstruction::Jump {
                 location: jump_location,
             });
@@ -369,20 +490,28 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
             let mut arguments = vec![];
-            // TODO: type checking
-            for argument in &call.arguments {
-                let (argument_reg, _argument_typ) = resolve_ast(
+            let (param_types, return_type) = if let Some(proc_type) = operand_typ.as_procedure() {
+                proc_type
+            } else {
+                return Err(ResolvingError::ExpectedProcedure {
+                    location: call.operand.get_location().clone(),
+                    typ: operand_typ,
+                });
+            };
+            for (i, argument) in call.arguments.iter().enumerate() {
+                let (argument_reg, argument_typ) = resolve_ast(
                     argument,
                     instructions,
                     max_registers,
                     next_register,
                     procedures,
                     variables,
-                )
+                )?
                 .unwrap();
+                expect_types_equal(&argument_typ, &param_types[i], argument.get_location())?;
                 arguments.push(argument_reg);
             }
             let ret = allocate_register(max_registers, next_register);
@@ -391,10 +520,35 @@ fn resolve_ast(
                 dest: ret,
                 args: arguments,
             });
-            Some((ret, *operand_typ.as_procedure().unwrap().1.clone()))
+            Some((ret, *return_type.clone()))
         }
 
-        Ast::Unary(_) => todo!(),
+        Ast::Unary(unary) => {
+            let (operand, operand_typ) = resolve_ast(
+                &unary.operand,
+                instructions,
+                max_registers,
+                next_register,
+                procedures,
+                variables,
+            )?
+            .unwrap();
+            let reg = allocate_register(max_registers, next_register);
+            match unary.operator {
+                UnaryOperator::Identity => {
+                    expect_types_equal(&operand_typ, &Type::Int, unary.operand.get_location())?;
+                    Some((reg, Type::Int))
+                }
+                UnaryOperator::Negation => {
+                    expect_types_equal(&operand_typ, &Type::Int, unary.operand.get_location())?;
+                    instructions.push(BytecodeInstruction::Negate {
+                        dest: reg,
+                        reg: operand,
+                    });
+                    Some((reg, Type::Int))
+                }
+            }
+        }
 
         Ast::Binary(binary) => {
             let (left, left_typ) = resolve_ast(
@@ -404,57 +558,66 @@ fn resolve_ast(
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
-            let (right, _right_typ) = resolve_ast(
+            let (right, right_typ) = resolve_ast(
                 &binary.right,
                 instructions,
                 max_registers,
                 next_register,
                 procedures,
                 variables,
-            )
+            )?
             .unwrap();
             let reg = allocate_register(max_registers, next_register);
-            // TODO: type checking
             match binary.operator {
                 BinaryOperator::Add => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::Add {
                         dest: reg,
                         a: left,
                         b: right,
                     });
-                    Some((reg, left_typ))
+                    Some((reg, Type::Int))
                 }
 
                 BinaryOperator::Subtract => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::Subtract {
                         dest: reg,
                         a: left,
                         b: right,
                     });
-                    Some((reg, left_typ))
+                    Some((reg, Type::Int))
                 }
 
                 BinaryOperator::Multiply => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::Multiply {
                         dest: reg,
                         a: left,
                         b: right,
                     });
-                    Some((reg, left_typ))
+                    Some((reg, Type::Int))
                 }
 
                 BinaryOperator::Divide => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::Divide {
                         dest: reg,
                         a: left,
                         b: right,
                     });
-                    Some((reg, left_typ))
+                    Some((reg, Type::Int))
                 }
 
                 BinaryOperator::LessThan => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::LessThan {
                         dest: reg,
                         a: left,
@@ -464,6 +627,8 @@ fn resolve_ast(
                 }
 
                 BinaryOperator::GreaterThan => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::GreaterThan {
                         dest: reg,
                         a: left,
@@ -473,6 +638,8 @@ fn resolve_ast(
                 }
 
                 BinaryOperator::LessThanEqual => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::GreaterThan {
                         dest: reg,
                         a: left,
@@ -483,6 +650,8 @@ fn resolve_ast(
                 }
 
                 BinaryOperator::GreaterThanEqual => {
+                    expect_types_equal(&left_typ, &Type::Int, binary.left.get_location())?;
+                    expect_types_equal(&right_typ, &Type::Int, binary.right.get_location())?;
                     instructions.push(BytecodeInstruction::LessThan {
                         dest: reg,
                         a: left,
@@ -494,13 +663,9 @@ fn resolve_ast(
             }
         }
 
-        Ast::Name(name) => Some(if let Some(decl) = variables.get(&name.name) {
-            match decl {
-                Declaration::Parameter(_, typ, reg) => (*reg, typ.clone()),
-                Declaration::Let(_, typ, reg) => (*reg, typ.clone()),
-                Declaration::Var(_, typ, reg) => (*reg, typ.clone()),
-            }
-        } else if let Some((_, typ)) = procedures.get(&name.name) {
+        Ast::Name(name) => Some(if let Some((_, typ, reg)) = variables.get(&name.name) {
+            (*reg, typ.clone())
+        } else if let Some((_, typ, _)) = procedures.get(&name.name) {
             let reg = allocate_register(max_registers, next_register);
             instructions.push(BytecodeInstruction::Set {
                 dest: reg,
@@ -508,13 +673,20 @@ fn resolve_ast(
             });
             (reg, typ.clone())
         } else {
-            todo!()
+            return Err(ResolvingError::UndeclaredName {
+                name: name.name.clone(),
+                name_location: name.location.clone(),
+            });
         }),
 
         Ast::Integer(integer) => {
             let reg = allocate_register(max_registers, next_register);
             if integer.integer > i64::MAX as u128 {
-                todo!("integer is too big for int")
+                return Err(ResolvingError::IntegerTooBigForType {
+                    value: integer.integer,
+                    typ: Type::Int,
+                    integer_location: integer.location.clone(),
+                });
             }
             instructions.push(BytecodeInstruction::Set {
                 dest: reg,
@@ -522,31 +694,28 @@ fn resolve_ast(
             });
             Some((reg, Type::Int))
         }
-    }
+    })
 }
 
-fn eval_type(ast: &Ast) -> Type {
-    match ast {
-        Ast::File(_) => unreachable!(),
-        Ast::Procedure(_) => todo!(),
-        Ast::Scope(_) => todo!(),
-        Ast::Let(_) => todo!(),
-        Ast::Var(_) => todo!(),
-        Ast::LeftAssign(_) => todo!(),
-        Ast::RightAssign(_) => todo!(),
-        Ast::If(_) => todo!(),
-        Ast::While(_) => todo!(),
-        Ast::Call(_) => todo!(),
-        Ast::Unary(_) => todo!(),
-        Ast::Binary(_) => todo!(),
+fn eval_type(ast: &Ast) -> Result<Type, ResolvingError> {
+    Ok(match ast {
         Ast::Name(name) => match &name.name as &str {
             "void" => Type::Void,
             "int" => Type::Int,
             "bool" => Type::Bool,
-            _ => todo!("unknown type name"),
+            _ => {
+                return Err(ResolvingError::UndeclaredType {
+                    name: name.name.clone(),
+                    name_location: name.location.clone(),
+                })
+            }
         },
-        Ast::Integer(_) => todo!(),
-    }
+        _ => {
+            return Err(ResolvingError::ExpectedType {
+                location: ast.get_location().clone(),
+            })
+        }
+    })
 }
 
 fn allocate_register(max_registers: &mut usize, next_register: &mut usize) -> usize {
@@ -556,4 +725,20 @@ fn allocate_register(max_registers: &mut usize, next_register: &mut usize) -> us
         *max_registers = *next_register;
     }
     register
+}
+
+fn expect_types_equal(
+    typ: &Type,
+    expected_typ: &Type,
+    location: &SourceSpan,
+) -> Result<(), ResolvingError> {
+    if typ != expected_typ {
+        Err(ResolvingError::ExpectedTypeButGotType {
+            location: location.clone(),
+            expected_typ: expected_typ.clone(),
+            typ: typ.clone(),
+        })
+    } else {
+        Ok(())
+    }
 }
