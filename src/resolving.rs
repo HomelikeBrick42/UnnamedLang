@@ -77,6 +77,8 @@ pub enum ResolvingError {
     NonProcedureAtGlobalScope { location: SourceSpan },
     #[display(fmt = "{}: Unknown #compiler procedure '{}'", location, name)]
     UnknownCompilerProcedure { location: SourceSpan, name: String },
+    #[display(fmt = "{}: expression is not assignable", location)]
+    NotAssignable { location: SourceSpan },
 }
 
 pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
@@ -357,6 +359,11 @@ fn resolve_ast(
         }
 
         Ast::LeftAssign(left_assign) => {
+            if !is_assignable(&left_assign.operand, variables) {
+                return Err(ResolvingError::NotAssignable {
+                    location: left_assign.operand.get_location().clone(),
+                });
+            }
             let (operand, operand_typ) = resolve_ast(
                 &left_assign.operand,
                 instructions,
@@ -384,6 +391,11 @@ fn resolve_ast(
         }
 
         Ast::RightAssign(right_assign) => {
+            if !is_assignable(&right_assign.operand, variables) {
+                return Err(ResolvingError::NotAssignable {
+                    location: right_assign.operand.get_location().clone(),
+                });
+            }
             let (value, value_typ) = resolve_ast(
                 &right_assign.value,
                 instructions,
@@ -757,5 +769,34 @@ fn expect_types_equal(
         })
     } else {
         Ok(())
+    }
+}
+
+fn is_assignable(ast: &Ast, variables: &HashMap<String, (Declaration, Type, usize)>) -> bool {
+    match ast {
+        Ast::File(_) => false,
+        Ast::Procedure(_) => false,
+        Ast::Scope(_) => false,
+        Ast::Let(_) => false,
+        Ast::Var(_) => false,
+        Ast::LeftAssign(_) => false,
+        Ast::RightAssign(_) => false,
+        Ast::If(_) => false,
+        Ast::While(_) => false,
+        Ast::Call(_) => false,
+        Ast::Unary(_) => false,
+        Ast::Binary(_) => false,
+        Ast::Name(name) => {
+            if let Some((decl, _, _)) = variables.get(&name.name) {
+                match decl {
+                    Declaration::Parameter(_) => false,
+                    Declaration::Let(_) => false,
+                    Declaration::Var(_) => true,
+                }
+            } else {
+                false
+            }
+        }
+        Ast::Integer(_) => false,
     }
 }
