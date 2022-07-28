@@ -84,8 +84,7 @@ pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
     for statement in &file.statements {
         if let Some(procedure) = statement.as_procedure() {
             if let Some((_, _, location)) = procedures.insert(procedure.name.clone(), {
-                let bytecode_procedure = resolve_procedure(procedure, &procedures)?;
-                let typ = Type::Procedure {
+                let proc_type = Type::Procedure {
                     parameters: procedure
                         .parameters
                         .iter()
@@ -93,7 +92,8 @@ pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
                         .collect::<Result<_, _>>()?,
                     return_type: Box::new(eval_type(&procedure.return_type)?),
                 };
-                (bytecode_procedure, typ, procedure.location.clone())
+                let bytecode_procedure = resolve_procedure(procedure, &proc_type, &procedures)?;
+                (bytecode_procedure, proc_type, procedure.location.clone())
             }) {
                 return Err(ResolvingError::ProcedureAlreadyDefined {
                     new_location: procedure.location.clone(),
@@ -117,6 +117,7 @@ pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
 
 fn resolve_procedure(
     procedure: &AstProcedure,
+    proc_type: &Type,
     procedures: &HashMap<String, (BytecodeProcedure, Type, SourceSpan)>,
 ) -> Result<BytecodeProcedure, ResolvingError> {
     let mut instructions = vec![];
@@ -141,6 +142,14 @@ fn resolve_procedure(
     match &procedure.body {
         ProcedureBody::CompilerGenerated(_) => match &procedure.name as &str {
             "print_int" => {
+                expect_types_equal(
+                    proc_type,
+                    &Type::Procedure {
+                        parameters: vec![Type::Int],
+                        return_type: Box::new(Type::Void),
+                    },
+                    &procedure.location,
+                )?;
                 instructions.push(BytecodeInstruction::PrintInt { reg: 0 });
                 let ret_value = allocate_register(&mut max_registers, &mut next_register);
                 instructions.push(BytecodeInstruction::Set {
@@ -151,6 +160,14 @@ fn resolve_procedure(
             }
 
             "println" => {
+                expect_types_equal(
+                    proc_type,
+                    &Type::Procedure {
+                        parameters: vec![],
+                        return_type: Box::new(Type::Void),
+                    },
+                    &procedure.location,
+                )?;
                 instructions.push(BytecodeInstruction::PrintLn);
                 let ret_value = allocate_register(&mut max_registers, &mut next_register);
                 instructions.push(BytecodeInstruction::Set {
