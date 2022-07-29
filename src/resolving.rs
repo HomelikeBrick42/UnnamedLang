@@ -217,12 +217,16 @@ fn resolve_procedure(
                 &mut variables,
                 procedures,
             )?;
-            let ret_value = allocate_register(&mut max_registers, &mut next_register);
-            instructions.push(BytecodeInstruction::Set {
-                dest: ret_value,
-                value: BytecodeValue::Void,
-            });
-            instructions.push(BytecodeInstruction::Return { reg: ret_value });
+            if **proc_type.as_procedure().unwrap().1 == Type::Void {
+                let ret_value = allocate_register(&mut max_registers, &mut next_register);
+                instructions.push(BytecodeInstruction::Set {
+                    dest: ret_value,
+                    value: BytecodeValue::Void,
+                });
+                instructions.push(BytecodeInstruction::Return { reg: ret_value });
+            } else {
+                todo!("non-void return types")
+            }
         }
     }
 
