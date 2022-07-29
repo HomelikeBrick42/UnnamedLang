@@ -30,6 +30,7 @@ pub struct Lexer {
 
 static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
     "proc" => TokenKind::ProcKeyword,
+    "return" => TokenKind::ReturnKeyword,
     "let" => TokenKind::LetKeyword,
     "var" => TokenKind::VarKeyword,
     "if" => TokenKind::IfKeyword,

@@ -6,6 +6,16 @@ proc main(): void {
 	print_int(foo)
 	println()
 
+	proc factorial(n: int): int {
+		if n > 1 {
+			return n * factorial(n - 1)
+		}
+		return n
+	}
+
+	print_int(factorial(6))
+	println()
+
 	proc do_loop(max: int): void {
 		var i <- 0
 		while i <= max {

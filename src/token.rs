@@ -51,6 +51,8 @@ pub enum TokenKind {
     CompilerDirective,
     #[display(fmt = "proc")]
     ProcKeyword,
+    #[display(fmt = "return")]
+    ReturnKeyword,
     #[display(fmt = "let")]
     LetKeyword,
     #[display(fmt = "var")]

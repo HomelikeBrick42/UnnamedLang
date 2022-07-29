@@ -5,8 +5,8 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     Ast, AstBinary, AstCall, AstFile, AstIf, AstInteger, AstLeftAssign, AstLet, AstName,
-    AstProcedure, AstRightAssign, AstScope, AstUnary, AstVar, AstWhile, BinaryOperator, Lexer,
-    LexerError, Parameter, ProcedureBody, SourceLocation, SourceSpan, Token, TokenKind,
+    AstProcedure, AstReturn, AstRightAssign, AstScope, AstUnary, AstVar, AstWhile, BinaryOperator,
+    Lexer, LexerError, Parameter, ProcedureBody, SourceLocation, SourceSpan, Token, TokenKind,
     UnaryOperator,
 };
 
@@ -114,6 +114,22 @@ pub fn parse_statement(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 parameters,
                 return_type,
                 body,
+            }))
+        }
+
+        TokenKind::ReturnKeyword => {
+            let return_token = expect_token(lexer, TokenKind::ReturnKeyword)?;
+            let value = match lexer.peek_token()?.kind {
+                TokenKind::EndOfFile | TokenKind::CloseParenthesis | TokenKind::CloseBrace => None,
+                _ => Some(parse_expression(lexer)?),
+            };
+            Ast::Return(Rc::new(AstReturn {
+                location: if let Some(value) = &value {
+                    SourceSpan::combine_spans(&return_token.location, value.get_location())
+                } else {
+                    return_token.location.clone()
+                },
+                value,
             }))
         }
 

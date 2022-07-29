@@ -8,6 +8,7 @@ use crate::SourceSpan;
 pub enum Ast {
     File(Rc<AstFile>),
     Procedure(Rc<AstProcedure>),
+    Return(Rc<AstReturn>),
     Scope(Rc<AstScope>),
     Let(Rc<AstLet>),
     Var(Rc<AstVar>),
@@ -27,6 +28,7 @@ impl Ast {
         match self {
             Ast::File(file) => &file.location,
             Ast::Procedure(procedure) => &procedure.location,
+            Ast::Return(returnn) => &returnn.location,
             Ast::Scope(scope) => &scope.location,
             Ast::Let(lett) => &lett.location,
             Ast::Var(var) => &var.location,
@@ -69,6 +71,12 @@ pub struct AstProcedure {
     pub parameters: Vec<Rc<Parameter>>,
     pub return_type: Ast,
     pub body: ProcedureBody,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstReturn {
+    pub location: SourceSpan,
+    pub value: Option<Ast>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

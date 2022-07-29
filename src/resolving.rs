@@ -70,6 +70,8 @@ pub enum ResolvingError {
     NotAssignable { location: SourceSpan },
     #[display(fmt = "Unable to find main procedure")]
     NoMainProcedure,
+    #[display(fmt = "{}: Not all control paths return a value", location)]
+    NoReturn { location: SourceSpan },
 }
 
 pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
@@ -209,6 +211,7 @@ fn resolve_procedure(
             }
         },
         ProcedureBody::Scope(scope) => {
+            let return_type = *proc_type.as_procedure().unwrap().1.clone();
             resolve_ast(
                 &scope,
                 &mut instructions,
@@ -216,8 +219,9 @@ fn resolve_procedure(
                 &mut next_register,
                 &mut variables,
                 procedures,
+                &Some(return_type.clone()),
             )?;
-            if **proc_type.as_procedure().unwrap().1 == Type::Void {
+            if return_type == Type::Void {
                 let ret_value = allocate_register(&mut max_registers, &mut next_register);
                 instructions.push(BytecodeInstruction::Set {
                     dest: ret_value,
@@ -225,7 +229,11 @@ fn resolve_procedure(
                 });
                 instructions.push(BytecodeInstruction::Return { reg: ret_value });
             } else {
-                todo!("non-void return types")
+                if !returns_in_all_paths(scope) {
+                    return Err(ResolvingError::NoReturn {
+                        location: procedure.location.clone(),
+                    });
+                }
             }
         }
     }
@@ -263,6 +271,7 @@ fn resolve_ast(
     next_register: &mut usize,
     variables: &mut HashMap<String, (Declaration, Type, usize)>,
     procedures: &mut Vec<BytecodeProcedure>,
+    proc_return_type: &Option<Type>,
 ) -> Result<Option<(usize, Type)>, ResolvingError> {
     Ok(match ast {
         Ast::File(_) => unreachable!(),
@@ -280,6 +289,37 @@ fn resolve_ast(
             None
         }
 
+        Ast::Return(returnn) => {
+            let (value, value_typ) = if let Some(value) = &returnn.value {
+                resolve_ast(
+                    value,
+                    instructions,
+                    max_registers,
+                    next_register,
+                    variables,
+                    procedures,
+                    proc_return_type,
+                )?
+                .unwrap()
+            } else {
+                let void = allocate_register(max_registers, next_register);
+                instructions.push(BytecodeInstruction::Set {
+                    dest: void,
+                    value: BytecodeValue::Void,
+                });
+                (void, Type::Void)
+            };
+            expect_types_equal(
+                &value_typ,
+                proc_return_type
+                    .as_ref()
+                    .expect("we should only be here we are inside of a procedure"),
+                &returnn.location,
+            )?;
+            instructions.push(BytecodeInstruction::Return { reg: value });
+            None
+        }
+
         Ast::Scope(scope) => {
             let mut next_register_copy = *next_register;
             let mut variables_copy = variables.clone();
@@ -291,6 +331,7 @@ fn resolve_ast(
                     &mut next_register_copy,
                     &mut variables_copy,
                     procedures,
+                    proc_return_type,
                 )?;
             }
             None
@@ -311,6 +352,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
@@ -356,6 +398,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
@@ -399,6 +442,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let (value, value_typ) = resolve_ast(
@@ -408,6 +452,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             expect_types_equal(&value_typ, &operand_typ, &left_assign.location)?;
@@ -431,6 +476,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let (operand, operand_typ) = resolve_ast(
@@ -440,6 +486,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             expect_types_equal(&value_typ, &operand_typ, &right_assign.location)?;
@@ -458,6 +505,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             expect_types_equal(&condition_typ, &Type::Bool, &iff.location)?;
@@ -477,6 +525,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?;
             let jump_past_else_location = instructions.len();
             instructions.push(BytecodeInstruction::Jump {
@@ -494,6 +543,7 @@ fn resolve_ast(
                     next_register,
                     variables,
                     procedures,
+                    proc_return_type,
                 )?;
             }
             *instructions[jump_past_else_location].as_jump_mut().unwrap() = instructions.len();
@@ -509,6 +559,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             expect_types_equal(&condition_typ, &Type::Bool, &whilee.location)?;
@@ -528,6 +579,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?;
             instructions.push(BytecodeInstruction::Jump {
                 location: jump_location,
@@ -547,6 +599,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let mut arguments = vec![];
@@ -566,6 +619,7 @@ fn resolve_ast(
                     next_register,
                     variables,
                     procedures,
+                    proc_return_type,
                 )?
                 .unwrap();
                 expect_types_equal(&argument_typ, &param_types[i], argument.get_location())?;
@@ -588,6 +642,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let reg = allocate_register(max_registers, next_register);
@@ -615,6 +670,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let (right, right_typ) = resolve_ast(
@@ -624,6 +680,7 @@ fn resolve_ast(
                 next_register,
                 variables,
                 procedures,
+                proc_return_type,
             )?
             .unwrap();
             let reg = allocate_register(max_registers, next_register);
@@ -812,6 +869,7 @@ fn is_assignable(ast: &Ast, variables: &HashMap<String, (Declaration, Type, usiz
     match ast {
         Ast::File(_) => false,
         Ast::Procedure(_) => false,
+        Ast::Return(_) => false,
         Ast::Scope(_) => false,
         Ast::Let(_) => false,
         Ast::Var(_) => false,
@@ -834,6 +892,35 @@ fn is_assignable(ast: &Ast, variables: &HashMap<String, (Declaration, Type, usiz
                 false
             }
         }
+        Ast::Integer(_) => false,
+    }
+}
+
+fn returns_in_all_paths(ast: &Ast) -> bool {
+    match ast {
+        Ast::File(_) => unreachable!(),
+        Ast::Procedure(_) => false,
+        Ast::Return(_) => true,
+        Ast::Scope(scope) => scope
+            .statements
+            .iter()
+            .any(|statement| returns_in_all_paths(statement)),
+        Ast::Let(_) => false,
+        Ast::Var(_) => false,
+        Ast::LeftAssign(_) => false,
+        Ast::RightAssign(_) => false,
+        Ast::If(iff) => {
+            iff.else_statement
+                .as_ref()
+                .map(|statement| returns_in_all_paths(statement))
+                .unwrap_or(false)
+                && returns_in_all_paths(&iff.then_statement)
+        }
+        Ast::While(whilee) => returns_in_all_paths(&whilee.body),
+        Ast::Call(_) => false,
+        Ast::Unary(_) => false,
+        Ast::Binary(_) => false,
+        Ast::Name(_) => false,
         Ast::Integer(_) => false,
     }
 }
