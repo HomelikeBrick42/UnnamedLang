@@ -62,47 +62,30 @@ pub enum ResolvingError {
         typ
     )]
     ExpectedProcedure { location: SourceSpan, typ: Type },
-    #[display(
-        fmt = "{}: Procedure '{}' is already defined at {}",
-        new_location,
-        name,
-        old_location
-    )]
-    ProcedureAlreadyDefined {
-        new_location: SourceSpan,
-        old_location: SourceSpan,
-        name: String,
-    },
     #[display(fmt = "{}: Only procedures are allowed at global scope", location)]
     NonProcedureAtGlobalScope { location: SourceSpan },
     #[display(fmt = "{}: Unknown #compiler procedure '{}'", location, name)]
     UnknownCompilerProcedure { location: SourceSpan, name: String },
     #[display(fmt = "{}: expression is not assignable", location)]
     NotAssignable { location: SourceSpan },
+    #[display(fmt = "Unable to find main procedure")]
+    NoMainProcedure,
 }
 
 pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
-    let mut procedures = HashMap::new();
+    let mut variables = HashMap::new();
+    let mut procedures = vec![];
     for statement in &file.statements {
         if let Some(procedure) = statement.as_procedure() {
-            if let Some((_, _, location)) = procedures.insert(procedure.name.clone(), {
-                let proc_type = Type::Procedure {
-                    parameters: procedure
-                        .parameters
-                        .iter()
-                        .map(|parameter| Ok(eval_type(&parameter.typ)?))
-                        .collect::<Result<_, _>>()?,
-                    return_type: Box::new(eval_type(&procedure.return_type)?),
-                };
-                let bytecode_procedure = resolve_procedure(procedure, &proc_type, &procedures)?;
-                (bytecode_procedure, proc_type, procedure.location.clone())
-            }) {
-                return Err(ResolvingError::ProcedureAlreadyDefined {
-                    new_location: procedure.location.clone(),
-                    old_location: location.clone(),
-                    name: procedure.name.clone(),
-                });
-            }
+            let proc_type = Type::Procedure {
+                parameters: procedure
+                    .parameters
+                    .iter()
+                    .map(|parameter| Ok(eval_type(&parameter.typ)?))
+                    .collect::<Result<_, _>>()?,
+                return_type: Box::new(eval_type(&procedure.return_type)?),
+            };
+            resolve_procedure(procedure, &proc_type, &mut variables, &mut procedures)?;
         } else {
             return Err(ResolvingError::NonProcedureAtGlobalScope {
                 location: statement.get_location().clone(),
@@ -110,36 +93,63 @@ pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
         }
     }
     Ok(BytecodeProgram {
-        procedures: procedures
-            .into_iter()
-            .map(|(name, (proc, _, _))| (name, proc))
-            .collect(),
+        procedures,
+        main_proc_index: variables
+            .get("main")
+            .map(|(_, _, index)| index.clone())
+            .ok_or_else(|| ResolvingError::NoMainProcedure)?,
     })
 }
 
 fn resolve_procedure(
-    procedure: &AstProcedure,
+    procedure: &Rc<AstProcedure>,
     proc_type: &Type,
-    procedures: &HashMap<String, (BytecodeProcedure, Type, SourceSpan)>,
-) -> Result<BytecodeProcedure, ResolvingError> {
+    variables: &mut HashMap<String, (Declaration, Type, usize)>,
+    procedures: &mut Vec<BytecodeProcedure>,
+) -> Result<(), ResolvingError> {
+    if let Some((variable, _, _)) = variables.get(&procedure.name) {
+        return Err(ResolvingError::Redeclaration {
+            name: procedure.name.clone(),
+            old_declaration: variable.get_location().clone(),
+            new_declaration: procedure.location.clone(),
+        });
+    }
+
+    let proc_index = procedures.len();
+    variables.insert(
+        procedure.name.clone(),
+        (
+            Declaration::Procedure(procedure.clone()),
+            proc_type.clone(),
+            proc_index,
+        ),
+    );
+    procedures.push(BytecodeProcedure {
+        instructions: vec![],
+        max_registers: 0,
+    });
+
     let mut instructions = vec![];
     let mut max_registers = procedure.parameters.len();
     let mut next_register = procedure.parameters.len();
-    let mut variables = procedure
-        .parameters
-        .iter()
-        .enumerate()
-        .map(|(i, parameter)| {
-            Ok((
-                parameter.name.clone(),
-                (
-                    Declaration::Parameter(parameter.clone()),
-                    eval_type(&parameter.typ)?,
-                    i,
-                ),
-            ))
-        })
-        .collect::<Result<_, _>>()?;
+
+    for (i, parameter) in procedure.parameters.iter().enumerate() {
+        if let Some((variable, _, _)) = variables.get(&parameter.name) {
+            return Err(ResolvingError::Redeclaration {
+                name: parameter.name.clone(),
+                old_declaration: variable.get_location().clone(),
+                new_declaration: parameter.location.clone(),
+            });
+        }
+        variables.insert(
+            parameter.name.clone(),
+            (
+                Declaration::Parameter(parameter.clone()),
+                eval_type(&parameter.typ)?,
+                i,
+            ),
+        );
+    }
 
     match &procedure.body {
         ProcedureBody::CompilerGenerated(_) => match &procedure.name as &str {
@@ -192,8 +202,8 @@ fn resolve_procedure(
                 &mut instructions,
                 &mut max_registers,
                 &mut next_register,
+                variables,
                 procedures,
-                &mut variables,
             )?;
             let ret_value = allocate_register(&mut max_registers, &mut next_register);
             instructions.push(BytecodeInstruction::Set {
@@ -204,14 +214,16 @@ fn resolve_procedure(
         }
     }
 
-    Ok(BytecodeProcedure {
+    procedures[proc_index] = BytecodeProcedure {
         instructions,
         max_registers,
-    })
+    };
+    Ok(())
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
 enum Declaration {
+    Procedure(Rc<AstProcedure>),
     Parameter(Rc<Parameter>),
     Let(Rc<AstLet>),
     Var(Rc<AstVar>),
@@ -220,6 +232,7 @@ enum Declaration {
 impl Declaration {
     fn get_location(&self) -> &SourceSpan {
         match self {
+            Declaration::Procedure(procedure) => &procedure.location,
             Declaration::Parameter(parameter) => &parameter.location,
             Declaration::Let(lett) => &lett.location,
             Declaration::Var(var) => &var.location,
@@ -232,13 +245,35 @@ fn resolve_ast(
     instructions: &mut Vec<BytecodeInstruction>,
     max_registers: &mut usize,
     next_register: &mut usize,
-    procedures: &HashMap<String, (BytecodeProcedure, Type, SourceSpan)>,
     variables: &mut HashMap<String, (Declaration, Type, usize)>,
+    procedures: &mut Vec<BytecodeProcedure>,
 ) -> Result<Option<(usize, Type)>, ResolvingError> {
     Ok(match ast {
         Ast::File(_) => unreachable!(),
 
-        Ast::Procedure(_procedure) => todo!("nested procedures arent supported yet"),
+        Ast::Procedure(procedure) => {
+            let mut variables_copy = variables
+                .iter()
+                .filter_map(|(name, (decl, typ, index))| match decl {
+                    Declaration::Procedure(_) => {
+                        Some((name.clone(), (decl.clone(), typ.clone(), index.clone())))
+                    }
+                    Declaration::Parameter(_) => None,
+                    Declaration::Let(_) => None,
+                    Declaration::Var(_) => None,
+                })
+                .collect();
+            let proc_type = Type::Procedure {
+                parameters: procedure
+                    .parameters
+                    .iter()
+                    .map(|parameter| Ok(eval_type(&parameter.typ)?))
+                    .collect::<Result<_, _>>()?,
+                return_type: Box::new(eval_type(&procedure.return_type)?),
+            };
+            resolve_procedure(procedure, &proc_type, &mut variables_copy, procedures)?;
+            None
+        }
 
         Ast::Scope(scope) => {
             let mut next_register_copy = *next_register;
@@ -249,8 +284,8 @@ fn resolve_ast(
                     instructions,
                     max_registers,
                     &mut next_register_copy,
-                    procedures,
                     &mut variables_copy,
+                    procedures,
                 )?;
             }
             None
@@ -269,8 +304,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
@@ -289,12 +324,6 @@ fn resolve_ast(
                 return Err(ResolvingError::Redeclaration {
                     name: lett.name.clone(),
                     old_declaration: variable.get_location().clone(),
-                    new_declaration: lett.location.clone(),
-                });
-            } else if let Some((_, _, location)) = procedures.get(&lett.name) {
-                return Err(ResolvingError::Redeclaration {
-                    name: lett.name.clone(),
-                    old_declaration: location.clone(),
                     new_declaration: lett.location.clone(),
                 });
             }
@@ -320,8 +349,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             instructions.push(BytecodeInstruction::Move {
@@ -340,12 +369,6 @@ fn resolve_ast(
                 return Err(ResolvingError::Redeclaration {
                     name: var.name.clone(),
                     old_declaration: variable.get_location().clone(),
-                    new_declaration: var.location.clone(),
-                });
-            } else if let Some((_, _, location)) = procedures.get(&var.name) {
-                return Err(ResolvingError::Redeclaration {
-                    name: var.name.clone(),
-                    old_declaration: location.clone(),
                     new_declaration: var.location.clone(),
                 });
             }
@@ -369,8 +392,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let (value, value_typ) = resolve_ast(
@@ -378,8 +401,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             expect_types_equal(&value_typ, &operand_typ, &left_assign.location)?;
@@ -401,8 +424,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let (operand, operand_typ) = resolve_ast(
@@ -410,8 +433,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             expect_types_equal(&value_typ, &operand_typ, &right_assign.location)?;
@@ -428,8 +451,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             expect_types_equal(&condition_typ, &Type::Bool, &iff.location)?;
@@ -447,8 +470,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?;
             let jump_past_else_location = instructions.len();
             instructions.push(BytecodeInstruction::Jump {
@@ -464,8 +487,8 @@ fn resolve_ast(
                     instructions,
                     max_registers,
                     next_register,
-                    procedures,
                     variables,
+                    procedures,
                 )?;
             }
             *instructions[jump_past_else_location].as_jump_mut().unwrap() = instructions.len();
@@ -479,8 +502,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             expect_types_equal(&condition_typ, &Type::Bool, &whilee.location)?;
@@ -498,8 +521,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?;
             instructions.push(BytecodeInstruction::Jump {
                 location: jump_location,
@@ -517,8 +540,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let mut arguments = vec![];
@@ -536,8 +559,8 @@ fn resolve_ast(
                     instructions,
                     max_registers,
                     next_register,
-                    procedures,
                     variables,
+                    procedures,
                 )?
                 .unwrap();
                 expect_types_equal(&argument_typ, &param_types[i], argument.get_location())?;
@@ -558,8 +581,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let reg = allocate_register(max_registers, next_register);
@@ -585,8 +608,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let (right, right_typ) = resolve_ast(
@@ -594,8 +617,8 @@ fn resolve_ast(
                 instructions,
                 max_registers,
                 next_register,
-                procedures,
                 variables,
+                procedures,
             )?
             .unwrap();
             let reg = allocate_register(max_registers, next_register);
@@ -692,21 +715,29 @@ fn resolve_ast(
             }
         }
 
-        Ast::Name(name) => Some(if let Some((_, typ, reg)) = variables.get(&name.name) {
-            (*reg, typ.clone())
-        } else if let Some((_, typ, _)) = procedures.get(&name.name) {
-            let reg = allocate_register(max_registers, next_register);
-            instructions.push(BytecodeInstruction::Set {
-                dest: reg,
-                value: BytecodeValue::Procedure(name.name.clone()),
-            });
-            (reg, typ.clone())
-        } else {
-            return Err(ResolvingError::UndeclaredName {
-                name: name.name.clone(),
-                name_location: name.location.clone(),
-            });
-        }),
+        Ast::Name(name) => Some(
+            if let Some((decl, typ, index)) = variables.get(&name.name) {
+                (
+                    match decl {
+                        Declaration::Procedure(_) => {
+                            let reg = allocate_register(max_registers, next_register);
+                            instructions.push(BytecodeInstruction::Set {
+                                dest: reg,
+                                value: BytecodeValue::Procedure(*index),
+                            });
+                            reg
+                        }
+                        _ => *index,
+                    },
+                    typ.clone(),
+                )
+            } else {
+                return Err(ResolvingError::UndeclaredName {
+                    name: name.name.clone(),
+                    name_location: name.location.clone(),
+                });
+            },
+        ),
 
         Ast::Integer(integer) => {
             let reg = allocate_register(max_registers, next_register);
@@ -789,6 +820,7 @@ fn is_assignable(ast: &Ast, variables: &HashMap<String, (Declaration, Type, usiz
         Ast::Name(name) => {
             if let Some((decl, _, _)) = variables.get(&name.name) {
                 match decl {
+                    Declaration::Procedure(_) => false,
                     Declaration::Parameter(_) => false,
                     Declaration::Let(_) => false,
                     Declaration::Var(_) => true,

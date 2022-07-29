@@ -4,7 +4,7 @@ use enum_as_inner::EnumAsInner;
 
 use crate::SourceSpan;
 
-#[derive(Clone, Debug, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
 pub enum Ast {
     File(Rc<AstFile>),
     Procedure(Rc<AstProcedure>),
@@ -43,26 +43,26 @@ impl Ast {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstFile {
     pub location: SourceSpan,
     pub statements: Vec<Ast>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Parameter {
     pub location: SourceSpan,
     pub name: String,
     pub typ: Ast,
 }
 
-#[derive(Clone, Debug, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
 pub enum ProcedureBody {
     CompilerGenerated(SourceSpan),
     Scope(Ast),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstProcedure {
     pub location: SourceSpan,
     pub name: String,
@@ -71,13 +71,13 @@ pub struct AstProcedure {
     pub body: ProcedureBody,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstScope {
     pub location: SourceSpan,
     pub statements: Vec<Ast>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstLet {
     pub location: SourceSpan,
     pub name: String,
@@ -85,7 +85,7 @@ pub struct AstLet {
     pub value: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstVar {
     pub location: SourceSpan,
     pub name: String,
@@ -93,21 +93,21 @@ pub struct AstVar {
     pub value: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstLeftAssign {
     pub location: SourceSpan,
     pub operand: Ast,
     pub value: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstRightAssign {
     pub location: SourceSpan,
     pub value: Ast,
     pub operand: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstIf {
     pub location: SourceSpan,
     pub condition: Ast,
@@ -115,34 +115,34 @@ pub struct AstIf {
     pub else_statement: Option<Ast>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstWhile {
     pub location: SourceSpan,
     pub condition: Ast,
     pub body: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstCall {
     pub location: SourceSpan,
     pub operand: Ast,
     pub arguments: Vec<Ast>,
 }
 
-#[derive(Clone, Debug, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
 pub enum UnaryOperator {
     Identity,
     Negation,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstUnary {
     pub location: SourceSpan,
     pub operator: UnaryOperator,
     pub operand: Ast,
 }
 
-#[derive(Clone, Debug, EnumAsInner)]
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
 pub enum BinaryOperator {
     Add,
     Subtract,
@@ -154,7 +154,7 @@ pub enum BinaryOperator {
     GreaterThanEqual,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstBinary {
     pub location: SourceSpan,
     pub left: Ast,
@@ -162,13 +162,13 @@ pub struct AstBinary {
     pub right: Ast,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstName {
     pub location: SourceSpan,
     pub name: String,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstInteger {
     pub location: SourceSpan,
     pub integer: u128,

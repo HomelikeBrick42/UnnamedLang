@@ -3,7 +3,12 @@ use std::io::Write;
 use crate::{BytecodeInstruction, BytecodeProcedure, BytecodeProgram, BytecodeValue};
 
 pub fn execute_program(program: &BytecodeProgram, f: &mut dyn Write) {
-    execute_procedure(program, program.procedures.get("main").unwrap(), &[], f);
+    execute_procedure(
+        program,
+        &program.procedures[program.main_proc_index],
+        &[],
+        f,
+    );
 }
 
 pub fn execute_procedure(
@@ -70,10 +75,7 @@ pub fn execute_procedure(
             BytecodeInstruction::Call { proc, dest, args } => {
                 registers[*dest] = execute_procedure(
                     program,
-                    program
-                        .procedures
-                        .get(registers[*proc].as_procedure().unwrap())
-                        .unwrap(),
+                    &program.procedures[*registers[*proc].as_procedure().unwrap()],
                     &args
                         .iter()
                         .map(|reg| registers[*reg].clone())

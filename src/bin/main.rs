@@ -108,12 +108,12 @@ fn main() {
                 writeln!(stderr, "{}", error).unwrap();
                 std::process::exit(1)
             });
-            for (name, procedure) in program.procedures {
-                writeln!(stdout, "proc {}, {}", name, procedure.max_registers).unwrap();
-                for instruction in procedure.instructions {
+            for (i, procedure) in program.procedures.iter().enumerate() {
+                writeln!(stdout, "proc {}, {}", i, procedure.max_registers).unwrap();
+                for instruction in &procedure.instructions {
                     writeln!(stdout, "    {}", instruction).unwrap();
                 }
-                writeln!(stdout, "end_proc {}", name).unwrap();
+                writeln!(stdout, "end_proc {}", i).unwrap();
             }
         }
 

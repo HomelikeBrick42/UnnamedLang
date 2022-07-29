@@ -1,11 +1,10 @@
-use std::collections::HashMap;
-
 use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 #[derive(Clone, Debug)]
 pub struct BytecodeProgram {
-    pub procedures: HashMap<String, BytecodeProcedure>,
+    pub procedures: Vec<BytecodeProcedure>,
+    pub main_proc_index: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -63,5 +62,5 @@ pub enum BytecodeValue {
     #[display(fmt = "{}", _0)]
     Bool(bool),
     #[display(fmt = "proc {}", _0)]
-    Procedure(String),
+    Procedure(usize),
 }
