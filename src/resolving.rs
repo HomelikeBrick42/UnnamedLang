@@ -129,6 +129,18 @@ fn resolve_procedure(
         max_registers: 0,
     });
 
+    let mut variables = variables
+        .iter()
+        .filter_map(|(name, (decl, typ, index))| match decl {
+            Declaration::Procedure(_) => {
+                Some((name.clone(), (decl.clone(), typ.clone(), index.clone())))
+            }
+            Declaration::Parameter(_) => None,
+            Declaration::Let(_) => None,
+            Declaration::Var(_) => None,
+        })
+        .collect::<HashMap<_, _>>();
+
     let mut instructions = vec![];
     let mut max_registers = procedure.parameters.len();
     let mut next_register = procedure.parameters.len();
@@ -202,7 +214,7 @@ fn resolve_procedure(
                 &mut instructions,
                 &mut max_registers,
                 &mut next_register,
-                variables,
+                &mut variables,
                 procedures,
             )?;
             let ret_value = allocate_register(&mut max_registers, &mut next_register);
@@ -252,17 +264,6 @@ fn resolve_ast(
         Ast::File(_) => unreachable!(),
 
         Ast::Procedure(procedure) => {
-            let mut variables_copy = variables
-                .iter()
-                .filter_map(|(name, (decl, typ, index))| match decl {
-                    Declaration::Procedure(_) => {
-                        Some((name.clone(), (decl.clone(), typ.clone(), index.clone())))
-                    }
-                    Declaration::Parameter(_) => None,
-                    Declaration::Let(_) => None,
-                    Declaration::Var(_) => None,
-                })
-                .collect();
             let proc_type = Type::Procedure {
                 parameters: procedure
                     .parameters
@@ -271,7 +272,7 @@ fn resolve_ast(
                     .collect::<Result<_, _>>()?,
                 return_type: Box::new(eval_type(&procedure.return_type)?),
             };
-            resolve_procedure(procedure, &proc_type, &mut variables_copy, procedures)?;
+            resolve_procedure(procedure, &proc_type, variables, procedures)?;
             None
         }
 

@@ -6,16 +6,20 @@ proc main(): void {
 	print_int(foo)
 	println()
 
-	var i <- 0
-	while i <= 10 {
-		if i > 7 {
-			print_int(i + 10)
-		} else if i > 5 {
-			print_int(i * 2)
-		} else {
-			print_int(i)
+	proc do_loop(max: int): void {
+		var i <- 0
+		while i <= max {
+			if i > 7 {
+				print_int(i + 10)
+			} else if i > 5 {
+				print_int(i * 2)
+			} else {
+				print_int(i)
+			}
+			println()
+			i <- i + 1
 		}
-		println()
-		i <- i + 1
 	}
+
+	do_loop(10)
 }
