@@ -83,7 +83,7 @@ pub fn resolve_file(file: &AstFile) -> Result<BytecodeProgram, ResolvingError> {
                 parameters: procedure
                     .parameters
                     .iter()
-                    .map(|parameter| Ok(eval_type(&parameter.typ)?))
+                    .map(|parameter| eval_type(&parameter.typ))
                     .collect::<Result<_, _>>()?,
                 return_type: Box::new(eval_type(&procedure.return_type)?),
             };
