@@ -13,6 +13,8 @@ pub enum ResolvingError {
     UndeclaredName { name: String },
     #[display(fmt = "Expected type '{expected}', but got type '{got}'")]
     ExpectedType { expected: Rc<Type>, got: Rc<Type> },
+    #[display(fmt = "'{}' does not return in all control paths", "procedure.name")]
+    ProcedureNoReturn { procedure: Rc<AstProcedure> },
 }
 
 #[derive(Clone, Debug, PartialEq, IsVariant, EnumAsInner)]
@@ -209,7 +211,7 @@ pub fn resolve(
             Ast::File(file) => {
                 *file.resolved_type.borrow_mut() = Some(Type::Void.into());
                 for expression in &file.expressions {
-                    resolve(expression, None, defered_asts, parent_procedure)?;
+                    resolve(expression, None, defered_asts, &None)?;
                 }
                 while let Some((parent_procedure, ast)) = defered_asts.pop() {
                     resolve(&ast, None, defered_asts, &parent_procedure)?;
@@ -228,50 +230,71 @@ pub fn resolve(
                         &Ast::Parameter(parameter.clone()),
                         suggested_parameter_type,
                         defered_asts,
-                        parent_procedure,
+                        &None,
                     )?);
                 }
                 let return_type_type = resolve(
                     &procedure.return_type,
                     Some(Type::Type.into()),
                     defered_asts,
-                    parent_procedure,
+                    &None,
                 )?;
                 expect_type(&return_type_type, &Type::Type.into())?;
+                let return_type = eval_type(&procedure.return_type)?;
                 *procedure.resolved_type.borrow_mut() = Some(
                     Type::Procedure {
                         parameter_types,
-                        return_type: eval_type(&procedure.return_type)?,
+                        return_type: return_type.clone(),
                     }
                     .into(),
                 );
                 match &procedure.body {
                     AstProcedureBody::ExternName(_) => (),
                     AstProcedureBody::Scope(scope) => {
-                        defered_asts.push((Some(procedure.clone()), Ast::Scope(scope.clone())))
+                        fn does_return(ast: &Ast) -> bool {
+                            match ast {
+                                Ast::File(file) => file.expressions.iter().any(does_return),
+                                Ast::Procedure(_) => false,
+                                Ast::ProcedureType(_) => false,
+                                Ast::Parameter(_) => false,
+                                Ast::Scope(scope) => scope.expressions.iter().any(does_return),
+                                Ast::VarDeclaration(declaration) => does_return(&declaration.value),
+                                Ast::Name(_) => false,
+                                Ast::Integer(_) => false,
+                                Ast::Call(call) => {
+                                    does_return(&call.operand)
+                                        || call.arguments.iter().any(does_return)
+                                }
+                                Ast::Return(_) => true,
+                                Ast::Builtin(_) => false,
+                            }
+                        }
+                        let ast = Ast::Scope(scope.clone());
+                        if !return_type.is_void() && !does_return(&ast) {
+                            return Err(ResolvingError::ProcedureNoReturn {
+                                procedure: procedure.clone(),
+                            });
+                        }
+                        defered_asts.push((Some(procedure.clone()), ast))
                     }
                 }
             }
             Ast::ProcedureType(procedure_type) => {
                 *procedure_type.resolved_type.borrow_mut() = Some(Type::Type.into());
                 for parameter in &procedure_type.parameter_types {
-                    resolve(&parameter, None, defered_asts, parent_procedure)?;
+                    resolve(&parameter, None, defered_asts, &None)?;
                 }
                 let return_type_type = resolve(
                     &procedure_type.return_type,
                     Some(Type::Type.into()),
                     defered_asts,
-                    parent_procedure,
+                    &None,
                 )?;
                 expect_type(&return_type_type, &Type::Type.into())?;
             }
             Ast::Parameter(parameter) => {
-                let type_type = resolve(
-                    &parameter.typ,
-                    Some(Type::Type.into()),
-                    defered_asts,
-                    parent_procedure,
-                )?;
+                let type_type =
+                    resolve(&parameter.typ, Some(Type::Type.into()), defered_asts, &None)?;
                 expect_type(&type_type, &Type::Type.into())?;
                 *parameter.resolved_type.borrow_mut() = Some(eval_type(&parameter.typ)?);
             }
@@ -286,7 +309,7 @@ pub fn resolve(
                     &declaration.typ,
                     Some(Type::Type.into()),
                     defered_asts,
-                    parent_procedure,
+                    &None,
                 )?;
                 expect_type(&type_type, &Type::Type.into())?;
                 let resolved_type = eval_type(&declaration.typ)?;

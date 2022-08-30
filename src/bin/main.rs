@@ -26,7 +26,6 @@ proc do_whatever(print_proc: proc(s64) => void) => void {
     proc print_char(value: u8) => s32 #extern \"putchar\"
     print_char(69)
     print_char(10)
-    return
 }
 ",
     ));
