@@ -117,7 +117,7 @@ pub fn emit(
             )?;
             write!(stream, "\n")?;
             write!(stream, "typedef struct {{\n")?;
-            write!(stream, "char buffer[1];\n")?;
+            write!(stream, "char buffer[0];\n")?;
             write!(stream, "}} Void;\n")?;
             write!(stream, "\n")?;
             {
