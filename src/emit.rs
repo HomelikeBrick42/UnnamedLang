@@ -229,33 +229,9 @@ pub fn emit(
                             let typ = procedure.resolved_type.borrow();
                             let typ = typ.as_ref().unwrap();
                             let return_type = typ.as_procedure().unwrap().1;
-                            write!(stream, "static ")?;
-                            emit_function_decl(
-                                &procedure.parameters,
-                                return_type,
-                                &format!(
-                                    "_impl_{}_{}",
-                                    Rc::as_ptr(procedure) as usize,
-                                    procedure.name
-                                ),
-                                stream,
-                            )?;
-                            write!(stream, " {{\nextern ")?;
+                            write!(stream, "extern ")?;
                             emit_function_decl(&procedure.parameters, return_type, name, stream)?;
                             write!(stream, ";\n")?;
-                            write!(stream, "return {name}(")?;
-                            for (i, parameter) in procedure.parameters.iter().enumerate() {
-                                if i > 0 {
-                                    write!(stream, ", ")?;
-                                }
-                                write!(
-                                    stream,
-                                    "_{}_{}",
-                                    Rc::as_ptr(parameter) as usize,
-                                    parameter.name
-                                )?;
-                            }
-                            write!(stream, ");\n}}\n")?;
                             write!(stream, "static ")?;
                             emit_type(
                                 typ,
@@ -263,12 +239,7 @@ pub fn emit(
                                     .into(),
                                 stream,
                             )?;
-                            write!(
-                                stream,
-                                " = &_impl_{}_{};\n",
-                                Rc::as_ptr(procedure) as usize,
-                                procedure.name
-                            )?;
+                            write!(stream, " = &{};\n", name)?;
                         }
                         AstProcedureBody::Scope(_) => {
                             let typ = procedure.resolved_type.borrow();
