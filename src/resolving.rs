@@ -64,7 +64,29 @@ pub fn resolve_names(
             }
         }
         for expression in expressions {
-            resolve_names(expression, names)?;
+            resolve_names(expression, &mut names.clone())?;
+            match expression {
+                Ast::File(_) => (),
+                Ast::Procedure(_) => (), // procedures are already declared
+                Ast::ProcedureType(_) => (),
+                Ast::Parameter(_) => (),
+                Ast::Scope(_) => (),
+                Ast::VarDeclaration(declaration) => {
+                    if let Some(_) = names.insert(
+                        declaration.name.clone(),
+                        Declaration::Var(declaration.clone()),
+                    ) {
+                        return Err(ResolvingError::Redeclaration {
+                            name: declaration.name.clone(),
+                        });
+                    }
+                }
+                Ast::Name(_) => (),
+                Ast::Integer(_) => (),
+                Ast::Call(_) => (),
+                Ast::Return(_) => (),
+                Ast::Builtin(_) => (),
+            }
         }
         Ok(())
     }
@@ -74,7 +96,16 @@ pub fn resolve_names(
             scope_like(&file.expressions, &mut names.clone())?;
         }
         Ast::Procedure(procedure) => {
-            assert!(names.contains_key(&procedure.name));
+            if !names.contains_key(&procedure.name) {
+                if let Some(_) = names.insert(
+                    procedure.name.clone(),
+                    Declaration::Procedure(procedure.clone()),
+                ) {
+                    return Err(ResolvingError::Redeclaration {
+                        name: procedure.name.clone(),
+                    });
+                }
+            }
             let mut names = names
                 .iter()
                 .filter(|(_, decl)| decl.is_visible_through_procedures())
