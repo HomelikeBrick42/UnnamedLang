@@ -12,15 +12,21 @@ fn unwrap_error<T, E: Display>(result: Result<T, E>) -> T {
 fn main() {
     let file = unwrap_error(parse_file(
         "test.lang".into(),
-        "do_whatever(print_int)
+        "
+proc get_value() => s64 {
+    return 56
+}
+
+do_whatever(print_int)
 
 proc print_int(value: s64) => void #extern \"print_int\"
 
 proc do_whatever(print_proc: proc(s64) => void) => void {
-    print_proc(42)
+    print_proc(get_value())
     proc print_char(value: u8) => s32 #extern \"putchar\"
     print_char(69)
     print_char(10)
+    return
 }
 ",
     ));
@@ -110,7 +116,7 @@ proc do_whatever(print_proc: proc(s64) => void) => void {
         ),
     ]);
     unwrap_error(resolve_names(&program, &mut names));
-    unwrap_error(resolve(&program, None, &mut vec![]));
+    unwrap_error(resolve(&program, None, &mut vec![], &None));
     let mut string = Vec::new();
     emit(&program, &mut 1, &mut string).unwrap();
     std::fs::write("output.c", &string).unwrap();

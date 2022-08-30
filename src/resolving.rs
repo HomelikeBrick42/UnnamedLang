@@ -140,6 +140,11 @@ pub fn resolve_names(
                 resolve_names(argument, names)?;
             }
         }
+        Ast::Return(returnn) => {
+            if let Some(value) = &returnn.value {
+                resolve_names(value, names)?;
+            }
+        }
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
@@ -178,6 +183,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Name(name) => eval_type(name.resolved_declaration.borrow().as_ref().unwrap())?,
         Ast::Integer(_) => todo!(),
         Ast::Call(_) => todo!(),
+        Ast::Return(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
@@ -189,7 +195,8 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
 pub fn resolve(
     ast: &Ast,
     suggested_type: Option<Rc<Type>>,
-    defered_asts: &mut Vec<Ast>,
+    defered_asts: &mut Vec<(Option<Rc<AstProcedure>>, Ast)>,
+    parent_procedure: &Option<Rc<AstProcedure>>,
 ) -> Result<Rc<Type>, ResolvingError> {
     Ok(if let Some(typ) = ast.get_type() {
         typ
@@ -202,10 +209,10 @@ pub fn resolve(
             Ast::File(file) => {
                 *file.resolved_type.borrow_mut() = Some(Type::Void.into());
                 for expression in &file.expressions {
-                    resolve(expression, None, defered_asts)?;
+                    resolve(expression, None, defered_asts, parent_procedure)?;
                 }
-                while let Some(ast) = defered_asts.pop() {
-                    resolve(&ast, None, defered_asts)?;
+                while let Some((parent_procedure, ast)) = defered_asts.pop() {
+                    resolve(&ast, None, defered_asts, &parent_procedure)?;
                 }
             }
             Ast::Procedure(procedure) => {
@@ -221,12 +228,14 @@ pub fn resolve(
                         &Ast::Parameter(parameter.clone()),
                         suggested_parameter_type,
                         defered_asts,
+                        parent_procedure,
                     )?);
                 }
                 let return_type_type = resolve(
                     &procedure.return_type,
                     Some(Type::Type.into()),
                     defered_asts,
+                    parent_procedure,
                 )?;
                 expect_type(&return_type_type, &Type::Type.into())?;
                 *procedure.resolved_type.borrow_mut() = Some(
@@ -238,34 +247,47 @@ pub fn resolve(
                 );
                 match &procedure.body {
                     AstProcedureBody::ExternName(_) => (),
-                    AstProcedureBody::Scope(scope) => defered_asts.push(Ast::Scope(scope.clone())),
+                    AstProcedureBody::Scope(scope) => {
+                        defered_asts.push((Some(procedure.clone()), Ast::Scope(scope.clone())))
+                    }
                 }
             }
             Ast::ProcedureType(procedure_type) => {
                 *procedure_type.resolved_type.borrow_mut() = Some(Type::Type.into());
                 for parameter in &procedure_type.parameter_types {
-                    resolve(&parameter, None, defered_asts)?;
+                    resolve(&parameter, None, defered_asts, parent_procedure)?;
                 }
                 let return_type_type = resolve(
                     &procedure_type.return_type,
                     Some(Type::Type.into()),
                     defered_asts,
+                    parent_procedure,
                 )?;
                 expect_type(&return_type_type, &Type::Type.into())?;
             }
             Ast::Parameter(parameter) => {
-                let type_type = resolve(&parameter.typ, Some(Type::Type.into()), defered_asts)?;
+                let type_type = resolve(
+                    &parameter.typ,
+                    Some(Type::Type.into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
                 expect_type(&type_type, &Type::Type.into())?;
                 *parameter.resolved_type.borrow_mut() = Some(eval_type(&parameter.typ)?);
             }
             Ast::Scope(scope) => {
                 *scope.resolved_type.borrow_mut() = Some(Type::Void.into());
                 for expression in &scope.expressions {
-                    resolve(expression, None, defered_asts)?;
+                    resolve(expression, None, defered_asts, parent_procedure)?;
                 }
             }
             Ast::VarDeclaration(declaration) => {
-                let type_type = resolve(&declaration.typ, Some(Type::Type.into()), defered_asts)?;
+                let type_type = resolve(
+                    &declaration.typ,
+                    Some(Type::Type.into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
                 expect_type(&type_type, &Type::Type.into())?;
                 let resolved_type = eval_type(&declaration.typ)?;
                 *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
@@ -273,6 +295,7 @@ pub fn resolve(
                     &declaration.value,
                     declaration.resolved_type.borrow().clone(),
                     defered_asts,
+                    parent_procedure,
                 )?;
                 expect_type(&value_type, &resolved_type)?;
             }
@@ -281,7 +304,7 @@ pub fn resolve(
                 let declaration = declaration
                     .as_ref()
                     .expect("the name should be resolved at this point");
-                resolve(&declaration, suggested_type, defered_asts)?;
+                resolve(&declaration, suggested_type, defered_asts, parent_procedure)?;
             }
             Ast::Integer(integer) => {
                 // TODO: integer size check
@@ -303,7 +326,7 @@ pub fn resolve(
                 );
             }
             Ast::Call(call) => {
-                let operand_type = resolve(&call.operand, None, defered_asts)?; // TODO: is there some way we can expect the type here?
+                let operand_type = resolve(&call.operand, None, defered_asts, parent_procedure)?; // TODO: is there some way we can expect the type here?
                 let (parameter_types, return_type) =
                     if let Some(procedure_type) = operand_type.as_procedure() {
                         procedure_type
@@ -317,9 +340,39 @@ pub fn resolve(
                 for (argument, expected_argument_type) in
                     call.arguments.iter().zip(parameter_types.iter())
                 {
-                    let argument_type =
-                        resolve(argument, Some(expected_argument_type.clone()), defered_asts)?;
+                    let argument_type = resolve(
+                        argument,
+                        Some(expected_argument_type.clone()),
+                        defered_asts,
+                        parent_procedure,
+                    )?;
                     expect_type(&argument_type, expected_argument_type)?;
+                }
+            }
+            Ast::Return(returnn) => {
+                *returnn.resolved_type.borrow_mut() = Some(Type::Void.into());
+                let procedure = if let Some(procedure) = parent_procedure {
+                    procedure
+                } else {
+                    todo!("cannot use return outside of a function")
+                };
+                let return_type = Ast::Procedure(procedure.clone())
+                    .get_type()
+                    .unwrap()
+                    .as_procedure()
+                    .unwrap()
+                    .1
+                    .clone();
+                if let Some(value) = &returnn.value {
+                    let value_type = resolve(
+                        value,
+                        return_type.clone().into(),
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    expect_type(&value_type, &return_type)?;
+                } else {
+                    expect_type(&Type::Void.into(), &return_type)?;
                 }
             }
             Ast::Builtin(builtin) => match builtin.as_ref() {

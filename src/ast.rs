@@ -20,6 +20,7 @@ pub enum Ast {
     Name(Rc<AstName>),
     Integer(Rc<AstInteger>),
     Call(Rc<AstCall>),
+    Return(Rc<AstReturn>),
     Builtin(Rc<AstBuiltin>),
 }
 
@@ -40,6 +41,7 @@ impl Ast {
                 .flatten(),
             Ast::Integer(integer) => integer.resolved_type.borrow().clone(),
             Ast::Call(call) => call.resolved_type.borrow().clone(),
+            Ast::Return(returnn) => returnn.resolved_type.borrow().clone(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => Some(Type::Type.into()),
                 AstBuiltin::Void => Some(Type::Type.into()),
@@ -59,6 +61,7 @@ impl Ast {
             Ast::Name(name) => name.resolving.set(value),
             Ast::Integer(integer) => integer.resolving.set(value),
             Ast::Call(call) => call.resolving.set(value),
+            Ast::Return(returnn) => returnn.resolving.set(value),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
@@ -78,6 +81,7 @@ impl Ast {
             Ast::Name(name) => name.resolving.get(),
             Ast::Integer(integer) => integer.resolving.get(),
             Ast::Call(call) => call.resolving.get(),
+            Ast::Return(returnn) => returnn.resolving.get(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => false,
                 AstBuiltin::Void => false,
@@ -97,6 +101,7 @@ impl Ast {
             Ast::Name(name) => Rc::as_ptr(name) as *const _,
             Ast::Integer(integer) => Rc::as_ptr(integer) as *const _,
             Ast::Call(call) => Rc::as_ptr(call) as *const _,
+            Ast::Return(returnn) => Rc::as_ptr(returnn) as *const _,
             Ast::Builtin(builtin) => Rc::as_ptr(builtin) as *const _,
         }
     }
@@ -179,6 +184,13 @@ pub struct AstCall {
     pub resolved_type: ResolvedType,
     pub operand: Ast,
     pub arguments: Vec<Ast>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstReturn {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub value: Option<Ast>,
 }
 
 #[derive(Clone, Debug, PartialEq)]

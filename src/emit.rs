@@ -186,6 +186,11 @@ pub fn emit(
                                     get_all_procedures(argument, procedures, walked);
                                 }
                             }
+                            Ast::Return(returnn) => {
+                                if let Some(value) = &returnn.value {
+                                    get_all_procedures(value, procedures, walked);
+                                }
+                            }
                             Ast::Builtin(_) => (),
                         }
                     }
@@ -390,11 +395,11 @@ pub fn emit(
                 .iter()
                 .map(|argument| emit(argument, next_id, stream))
                 .collect::<Result<Vec<_>, _>>()?;
-            let id = *next_id;
+            let return_id = *next_id;
             *next_id += 1;
             emit_type(
                 call.resolved_type.borrow().as_ref().unwrap(),
-                format!("{PREFIX}{id}").into(),
+                format!("{PREFIX}{return_id}").into(),
                 stream,
             )?;
             write!(stream, " = (*{PREFIX}{operand})(")?;
@@ -405,6 +410,30 @@ pub fn emit(
                 write!(stream, "*{PREFIX}{argument}")?;
             }
             write!(stream, ");\n")?;
+            let id = *next_id;
+            *next_id += 1;
+            emit_type_ptr(
+                call.resolved_type.borrow().as_ref().unwrap(),
+                format!("{PREFIX}{id}").into(),
+                stream,
+            )?;
+            write!(stream, " = &{PREFIX}{return_id};\n")?;
+            id
+        }
+        Ast::Return(returnn) => {
+            if let Some(value) = &returnn.value {
+                let value_id = emit(value, next_id, stream)?;
+                write!(stream, "return *{PREFIX}{value_id};\n")?;
+            } else {
+                write!(stream, "return (Void){{}};\n")?;
+            }
+            let id = *next_id;
+            *next_id += 1;
+            let typ = returnn.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            assert!(typ.is_void());
+            write!(stream, " = &(Void){{}};\n")?;
             id
         }
         Ast::Builtin(_) => todo!(),
