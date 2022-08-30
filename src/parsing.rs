@@ -79,6 +79,13 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             )
         }
 
+        TokenKind::OpenParenthesis => {
+            expect_token(lexer, TokenKind::OpenParenthesis)?;
+            let expression = parse_expression(lexer)?;
+            expect_token(lexer, TokenKind::CloseParenthesis)?;
+            expression
+        }
+
         TokenKind::ProcKeyword => {
             expect_token(lexer, TokenKind::ProcKeyword)?;
             if lexer.peek_token()?.kind == TokenKind::OpenParenthesis {
