@@ -91,7 +91,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     expect_comma_and_or_newline(lexer)?;
                 }
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
-                expect_token(lexer, TokenKind::Colon)?;
+                expect_token(lexer, TokenKind::FatRightArrow)?;
                 let return_type = parse_expression(lexer)?;
                 Ast::ProcedureType(
                     AstProcedureType {
@@ -129,7 +129,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     expect_comma_and_or_newline(lexer)?;
                 }
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
-                expect_token(lexer, TokenKind::Colon)?;
+                expect_token(lexer, TokenKind::FatRightArrow)?;
                 let return_type = parse_expression(lexer)?;
                 let body = if lexer.peek_token()?.kind == TokenKind::ExternDirective {
                     expect_token(lexer, TokenKind::ExternDirective)?;

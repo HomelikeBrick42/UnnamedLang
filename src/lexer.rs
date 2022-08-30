@@ -77,6 +77,9 @@ static DOUBLE_CHAR_TOKENS: phf::Map<char, phf::Map<char, TokenKind>> = phf_map! 
     '-' =>phf_map! {
         '>' => TokenKind::RightArrow,
     },
+    '=' =>phf_map! {
+        '>' => TokenKind::FatRightArrow,
+    },
 };
 
 impl Lexer {

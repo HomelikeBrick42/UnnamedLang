@@ -33,6 +33,8 @@ pub enum TokenKind {
     LeftArrow,
     #[display(fmt = "->")]
     RightArrow,
+    #[display(fmt = "=>")]
+    FatRightArrow,
     #[display(fmt = "+")]
     Plus,
     #[display(fmt = "-")]

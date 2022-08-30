@@ -14,9 +14,9 @@ fn main() {
         "test.lang".into(),
         "do_whatever(print_int)
 
-proc print_int(value: s64): void #extern \"print_int\"
+proc print_int(value: s64) => void #extern \"print_int\"
 
-proc do_whatever(print_proc: proc(s64): void): void {
+proc do_whatever(print_proc: proc(s64) => void) => void {
     print_proc(42)
 }
 ",
