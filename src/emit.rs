@@ -22,8 +22,8 @@ fn emit_type(
                 write!(stream, " {name}")?;
             }
         }
-        Type::S64 => {
-            write!(stream, "s64")?;
+        Type::Integer { size, signed } => {
+            write!(stream, "{}{}", if *signed { "s" } else { "u" }, size * 8)?;
             if let Some(name) = name {
                 write!(stream, " {name}")?;
             }
@@ -75,10 +75,45 @@ pub fn emit(
     Ok(match ast {
         Ast::File(file) => {
             write!(stream, "typedef unsigned long long type;\n")?;
-            write!(stream, "typedef long long s64;\n")?;
+            write!(stream, "typedef signed char s8;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(s8) == 1, \"Expected s8 to be 1 byte\");\n"
+            )?;
+            write!(stream, "typedef signed short s16;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(s16) == 2, \"Expected s16 to be 2 bytes\");\n"
+            )?;
+            write!(stream, "typedef signed int s32;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(s32) == 4, \"Expected s32 to be 4 bytes\");\n"
+            )?;
+            write!(stream, "typedef signed long long s64;\n")?;
             write!(
                 stream,
                 "_Static_assert(sizeof(s64) == 8, \"Expected s64 to be 8 bytes\");\n"
+            )?;
+            write!(stream, "typedef unsigned char u8;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(u8) == 1, \"Expected u8 to be 1 byte\");\n"
+            )?;
+            write!(stream, "typedef unsigned short u16;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(u16) == 2, \"Expected u16 to be 2 bytes\");\n"
+            )?;
+            write!(stream, "typedef unsigned int u32;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(u32) == 4, \"Expected u32 to be 4 bytes\");\n"
+            )?;
+            write!(stream, "typedef unsigned long long u64;\n")?;
+            write!(
+                stream,
+                "_Static_assert(sizeof(u64) == 8, \"Expected u64 to be 8 bytes\");\n"
             )?;
             write!(stream, "\n")?;
             write!(stream, "typedef struct {{\n")?;
@@ -102,8 +137,29 @@ pub fn emit(
                             }
                             Ast::Procedure(procedure) => {
                                 procedures.push(procedure.clone());
+                                for parameter in &procedure.parameters {
+                                    get_all_procedures(
+                                        &Ast::Parameter(parameter.clone()),
+                                        procedures,
+                                        walked,
+                                    );
+                                }
+                                get_all_procedures(&procedure.return_type, procedures, walked);
+                                match &procedure.body {
+                                    AstProcedureBody::ExternName(_) => (),
+                                    AstProcedureBody::Scope(scope) => get_all_procedures(
+                                        &Ast::Scope(scope.clone()),
+                                        procedures,
+                                        walked,
+                                    ),
+                                }
                             }
-                            Ast::ProcedureType(_) => todo!(),
+                            Ast::ProcedureType(procedure_type) => {
+                                for parameter in &procedure_type.parameter_types {
+                                    get_all_procedures(parameter, procedures, walked);
+                                }
+                                get_all_procedures(&procedure_type.return_type, procedures, walked);
+                            }
                             Ast::Parameter(parameter) => {
                                 get_all_procedures(&parameter.typ, procedures, walked);
                             }
@@ -276,9 +332,8 @@ pub fn emit(
                 write!(stream, "return 0;\n")?;
                 write!(stream, "}}\n")?;
                 write!(stream, "\n")?;
-                write!(stream, "#include <stdio.h>\n")?;
-                write!(stream, "\n")?;
                 write!(stream, "Void print_int(s64 value) {{\n")?;
+                write!(stream, "extern int printf(const char *, ...);\n")?;
                 write!(stream, "printf(\"%lld\\n\", value);\n")?;
                 write!(stream, "return (Void){{}};\n")?;
                 write!(stream, "}}\n")?;

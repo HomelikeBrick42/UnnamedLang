@@ -18,6 +18,9 @@ proc print_int(value: s64) => void #extern \"print_int\"
 
 proc do_whatever(print_proc: proc(s64) => void) => void {
     print_proc(42)
+    proc print_char(value: u8) => s32 #extern \"putchar\"
+    print_char(69)
+    print_char(10)
 }
 ",
     ));
@@ -25,7 +28,86 @@ proc do_whatever(print_proc: proc(s64) => void) => void {
     let mut names = HashMap::from([
         ("type".into(), Declaration::Builtin(AstBuiltin::Type.into())),
         ("void".into(), Declaration::Builtin(AstBuiltin::Void.into())),
-        ("s64".into(), Declaration::Builtin(AstBuiltin::S64.into())),
+        (
+            "s8".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 1,
+                    signed: true,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "s16".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 2,
+                    signed: true,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "s32".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 4,
+                    signed: true,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "s64".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 8,
+                    signed: true,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "u8".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 1,
+                    signed: false,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "u16".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 2,
+                    signed: false,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "u32".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 4,
+                    signed: false,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "u64".into(),
+            Declaration::Builtin(
+                AstBuiltin::IntegerType {
+                    size: 8,
+                    signed: false,
+                }
+                .into(),
+            ),
+        ),
     ]);
     unwrap_error(resolve_names(&program, &mut names));
     unwrap_error(resolve(&program, None, &mut vec![]));

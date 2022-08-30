@@ -6,7 +6,10 @@ use enum_as_inner::EnumAsInner;
 pub enum Type {
     Type,
     Void,
-    S64,
+    Integer {
+        size: usize,
+        signed: bool,
+    },
     Procedure {
         parameter_types: Vec<Rc<Type>>,
         return_type: Rc<Type>,
@@ -21,7 +24,9 @@ impl Display for Type {
         match self {
             Type::Type => write!(f, "type"),
             Type::Void => write!(f, "void"),
-            Type::S64 => write!(f, "s64"),
+            Type::Integer { size, signed } => {
+                write!(f, "{}{}", if *signed { "s" } else { "u" }, size * 8)
+            }
             Type::Procedure {
                 parameter_types,
                 return_type,

@@ -43,7 +43,7 @@ impl Ast {
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => Some(Type::Type.into()),
                 AstBuiltin::Void => Some(Type::Type.into()),
-                AstBuiltin::S64 => Some(Type::Type.into()),
+                AstBuiltin::IntegerType { size: _, signed: _ } => Some(Type::Type.into()),
             },
         }
     }
@@ -62,7 +62,7 @@ impl Ast {
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
-                AstBuiltin::S64 => (),
+                AstBuiltin::IntegerType { size: _, signed: _ } => (),
             },
         }
     }
@@ -81,7 +81,7 @@ impl Ast {
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => false,
                 AstBuiltin::Void => false,
-                AstBuiltin::S64 => false,
+                AstBuiltin::IntegerType { size: _, signed: _ } => false,
             },
         }
     }
@@ -185,5 +185,5 @@ pub struct AstCall {
 pub enum AstBuiltin {
     Type,
     Void,
-    S64,
+    IntegerType { size: usize, signed: bool },
 }

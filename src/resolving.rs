@@ -143,7 +143,7 @@ pub fn resolve_names(
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
-            AstBuiltin::S64 => (),
+            AstBuiltin::IntegerType { size: _, signed: _ } => (),
         },
     })
 }
@@ -181,7 +181,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
-            AstBuiltin::S64 => Type::S64.into(),
+            &AstBuiltin::IntegerType { size, signed } => Type::Integer { size, signed }.into(),
         },
     })
 }
@@ -284,11 +284,23 @@ pub fn resolve(
                 resolve(&declaration, suggested_type, defered_asts)?;
             }
             Ast::Integer(integer) => {
-                if integer.value >= i64::MAX as _ {
-                    todo!("error")
-                } else {
-                    *integer.resolved_type.borrow_mut() = Some(Type::S64.into());
-                }
+                // TODO: integer size check
+                *integer.resolved_type.borrow_mut() = Some(
+                    if suggested_type
+                        .as_ref()
+                        .map(|typ| typ.as_integer())
+                        .flatten()
+                        .is_some()
+                    {
+                        suggested_type.unwrap().clone()
+                    } else {
+                        Type::Integer {
+                            size: 8,
+                            signed: true,
+                        }
+                        .into()
+                    },
+                );
             }
             Ast::Call(call) => {
                 let operand_type = resolve(&call.operand, None, defered_asts)?; // TODO: is there some way we can expect the type here?
@@ -313,7 +325,7 @@ pub fn resolve(
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
-                AstBuiltin::S64 => (),
+                AstBuiltin::IntegerType { size: _, signed: _ } => (),
             },
         }
         ast.set_resolving(false);
