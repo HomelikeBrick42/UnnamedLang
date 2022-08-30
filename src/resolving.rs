@@ -1,14 +1,17 @@
 use std::{collections::HashMap, rc::Rc};
 
-use derive_more::IsVariant;
+use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
 use crate::{Ast, AstBuiltin, AstParameter, AstProcedure, AstProcedureBody, AstVar, Type};
 
-#[derive(Clone, Debug, PartialEq, IsVariant, EnumAsInner)]
+#[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
 pub enum ResolvingError {
+    #[display(fmt = "Redeclaration of '{name}'")]
     Redeclaration { name: String },
+    #[display(fmt = "'{name}' is undeclared")]
     UndeclaredName { name: String },
+    #[display(fmt = "Expected type '{expected}', but got type '{got}'")]
     ExpectedType { expected: Rc<Type>, got: Rc<Type> },
 }
 
@@ -17,6 +20,22 @@ pub enum Declaration {
     Procedure(Rc<AstProcedure>),
     Parameter(Rc<AstParameter>),
     Var(Rc<AstVar>),
+    Builtin(Rc<AstBuiltin>),
+}
+
+impl Declaration {
+    pub fn is_visible_through_procedures(&self) -> bool {
+        matches!(self, Declaration::Procedure(_) | Declaration::Builtin(_))
+    }
+
+    pub fn to_ast(&self) -> Ast {
+        match self {
+            Declaration::Procedure(procedure) => Ast::Procedure(procedure.clone()),
+            Declaration::Parameter(parameter) => Ast::Parameter(parameter.clone()),
+            Declaration::Var(declaration) => Ast::VarDeclaration(declaration.clone()),
+            Declaration::Builtin(builtin) => Ast::Builtin(builtin.clone()),
+        }
+    }
 }
 
 pub fn resolve_names(
@@ -56,7 +75,7 @@ pub fn resolve_names(
             assert!(names.contains_key(&procedure.name));
             let mut names = names
                 .iter()
-                .filter(|(_, decl)| matches!(decl, Declaration::Procedure(_)))
+                .filter(|(_, decl)| decl.is_visible_through_procedures())
                 .map(|(name, decl)| (name.clone(), decl.clone()))
                 .collect::<HashMap<String, Declaration>>();
             for parameter in &procedure.parameters {
@@ -71,8 +90,8 @@ pub fn resolve_names(
             }
         }
         Ast::ProcedureType(procedure_type) => {
-            for parameter in &procedure_type.parameters {
-                resolve_names(&Ast::Parameter(parameter.clone()), names)?;
+            for parameter in &procedure_type.parameter_types {
+                resolve_names(parameter, names)?;
             }
             resolve_names(&procedure_type.return_type, names)?;
         }
@@ -111,11 +130,7 @@ pub fn resolve_names(
                         name: name.name.clone(),
                     });
                 };
-                *name.resolved_declaration.borrow_mut() = Some(match decl {
-                    Declaration::Procedure(procedure) => Ast::Procedure(procedure.clone()),
-                    Declaration::Parameter(parameter) => Ast::Parameter(parameter.clone()),
-                    Declaration::Var(declaration) => Ast::VarDeclaration(declaration.clone()),
-                });
+                *name.resolved_declaration.borrow_mut() = Some(decl.to_ast());
             }
         }
         Ast::Integer(_) => (),
@@ -150,17 +165,17 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Procedure(_) => todo!(),
         Ast::ProcedureType(procedure_type) => Type::Procedure {
             parameter_types: procedure_type
-                .parameters
+                .parameter_types
                 .iter()
-                .map(|parameter| parameter.resolved_type.borrow().clone().unwrap())
-                .collect(),
+                .map(eval_type)
+                .collect::<Result<_, _>>()?,
             return_type: eval_type(&procedure_type.return_type)?,
         }
         .into(),
         Ast::Parameter(_) => todo!(),
         Ast::Scope(_) => todo!(),
         Ast::VarDeclaration(_) => todo!(),
-        Ast::Name(_) => todo!(),
+        Ast::Name(name) => eval_type(name.resolved_declaration.borrow().as_ref().unwrap())?,
         Ast::Integer(_) => todo!(),
         Ast::Call(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
@@ -228,8 +243,8 @@ pub fn resolve(
             }
             Ast::ProcedureType(procedure_type) => {
                 *procedure_type.resolved_type.borrow_mut() = Some(Type::Type.into());
-                for parameter in &procedure_type.parameters {
-                    resolve(&Ast::Parameter(parameter.clone()), None, defered_asts)?;
+                for parameter in &procedure_type.parameter_types {
+                    resolve(&parameter, None, defered_asts)?;
                 }
                 let return_type_type = resolve(
                     &procedure_type.return_type,

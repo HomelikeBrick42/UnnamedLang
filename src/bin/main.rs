@@ -1,120 +1,34 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use langite::*;
 
+fn unwrap_error<T, E: Display>(result: Result<T, E>) -> T {
+    result.unwrap_or_else(|error| {
+        eprintln!("{}", error);
+        std::process::exit(1)
+    })
+}
+
 fn main() {
-    let program = Ast::File(
-        AstFile {
-            resolving: false.into(),
-            resolved_type: None.into(),
-            expressions: vec![
-                Ast::Call(
-                    AstCall {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
-                        operand: Ast::Name(
-                            AstName {
-                                resolving: false.into(),
-                                name: "do_whatever".into(),
-                                resolved_declaration: None.into(),
-                            }
-                            .into(),
-                        ),
-                        arguments: vec![Ast::Name(
-                            AstName {
-                                resolving: false.into(),
-                                name: "print_int".into(),
-                                resolved_declaration: None.into(),
-                            }
-                            .into(),
-                        )],
-                    }
-                    .into(),
-                ),
-                Ast::Procedure(
-                    AstProcedure {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
-                        name: "print_int".into(),
-                        parameters: vec![AstParameter {
-                            resolving: false.into(),
-                            resolved_type: None.into(),
-                            name: "value".into(),
-                            typ: Ast::Builtin(AstBuiltin::S64.into()),
-                        }
-                        .into()],
-                        return_type: Ast::Builtin(AstBuiltin::Void.into()),
-                        body: AstProcedureBody::ExternName("print_int".into()),
-                    }
-                    .into(),
-                ),
-                Ast::Procedure(
-                    AstProcedure {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
-                        name: "do_whatever".into(),
-                        parameters: vec![AstParameter {
-                            resolving: false.into(),
-                            resolved_type: None.into(),
-                            name: "print_proc".into(),
-                            typ: Ast::ProcedureType(
-                                AstProcedureType {
-                                    resolving: false.into(),
-                                    resolved_type: None.into(),
-                                    parameters: vec![AstParameter {
-                                        resolving: false.into(),
-                                        resolved_type: None.into(),
-                                        name: "value".into(),
-                                        typ: Ast::Builtin(AstBuiltin::S64.into()),
-                                    }
-                                    .into()],
-                                    return_type: Ast::Builtin(AstBuiltin::Void.into()),
-                                }
-                                .into(),
-                            ),
-                        }
-                        .into()],
-                        return_type: Ast::Builtin(AstBuiltin::Void.into()),
-                        body: AstProcedureBody::Scope(
-                            AstScope {
-                                resolving: false.into(),
-                                resolved_type: None.into(),
-                                expressions: vec![Ast::Call(
-                                    AstCall {
-                                        resolving: false.into(),
-                                        resolved_type: None.into(),
-                                        operand: Ast::Name(
-                                            AstName {
-                                                resolving: false.into(),
-                                                name: "print_proc".into(),
-                                                resolved_declaration: None.into(),
-                                            }
-                                            .into(),
-                                        ),
-                                        arguments: vec![Ast::Integer(
-                                            AstInteger {
-                                                resolving: false.into(),
-                                                resolved_type: None.into(),
-                                                value: 42,
-                                            }
-                                            .into(),
-                                        )],
-                                    }
-                                    .into(),
-                                )],
-                            }
-                            .into(),
-                        ),
-                    }
-                    .into(),
-                ),
-            ],
-        }
-        .into(),
-    );
-    let mut names = HashMap::from([]);
-    resolve_names(&program, &mut names).unwrap();
-    resolve(&program, None, &mut vec![]).unwrap();
+    let file = unwrap_error(parse_file(
+        "test.lang".into(),
+        "do_whatever(print_int)
+
+proc print_int(value: s64): void #extern \"print_int\"
+
+proc do_whatever(print_proc: proc(s64): void): void {
+    print_proc(42)
+}
+",
+    ));
+    let program = Ast::File(file);
+    let mut names = HashMap::from([
+        ("type".into(), Declaration::Builtin(AstBuiltin::Type.into())),
+        ("void".into(), Declaration::Builtin(AstBuiltin::Void.into())),
+        ("s64".into(), Declaration::Builtin(AstBuiltin::S64.into())),
+    ]);
+    unwrap_error(resolve_names(&program, &mut names));
+    unwrap_error(resolve(&program, None, &mut vec![]));
     let mut string = Vec::new();
     emit(&program, &mut 1, &mut string).unwrap();
     std::fs::write("output.c", &string).unwrap();

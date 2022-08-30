@@ -125,7 +125,7 @@ pub struct AstProcedure {
 pub struct AstProcedureType {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
-    pub parameters: Vec<Rc<AstParameter>>,
+    pub parameter_types: Vec<Ast>,
     pub return_type: Ast,
 }
 
