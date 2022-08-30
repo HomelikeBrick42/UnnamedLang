@@ -9,7 +9,7 @@ use enum_as_inner::EnumAsInner;
 
 use crate::Type;
 
-#[derive(Clone, Debug, PartialEq, IsVariant, EnumAsInner)]
+#[derive(Clone, Debug, IsVariant, EnumAsInner)]
 pub enum Ast {
     File(Rc<AstFile>),
     Procedure(Rc<AstProcedure>),
@@ -22,6 +22,12 @@ pub enum Ast {
     Call(Rc<AstCall>),
     Return(Rc<AstReturn>),
     Builtin(Rc<AstBuiltin>),
+}
+
+impl PartialEq for Ast {
+    fn eq(&self, other: &Self) -> bool {
+        self.get_ptr() == other.get_ptr()
+    }
 }
 
 impl Ast {

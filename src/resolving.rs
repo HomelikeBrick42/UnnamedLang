@@ -269,13 +269,13 @@ pub fn resolve(
                                 Ast::Builtin(_) => false,
                             }
                         }
-                        let ast = Ast::Scope(scope.clone());
-                        if !return_type.is_void() && !does_return(&ast) {
+                        let scope = Ast::Scope(scope.clone());
+                        if !return_type.is_void() && !does_return(&scope) {
                             return Err(ResolvingError::ProcedureNoReturn {
                                 procedure: procedure.clone(),
                             });
                         }
-                        defered_asts.push((Some(procedure.clone()), ast))
+                        defered_asts.push((Some(procedure.clone()), scope))
                     }
                 }
             }
