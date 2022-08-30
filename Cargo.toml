@@ -1,0 +1,8 @@
+[package]
+name = "langite"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+derive_more = "0.99.17"
+enum-as-inner = "0.5.0"
