@@ -511,12 +511,12 @@ pub fn emit(
             let end_id = *next_id;
             *next_id += 1;
             write!(stream, "goto {PREFIX}{end_id};\n")?;
-            write!(stream, "{PREFIX}{else_id}:\n")?;
+            write!(stream, "{PREFIX}{else_id}:;\n")?;
             if let Some(else_expression) = &iff.else_expression {
                 let else_expression = emit(else_expression, next_id, stream)?;
                 write!(stream, "{PREFIX}{id} = {PREFIX}{else_expression};\n")?;
             }
-            write!(stream, "{PREFIX}{end_id}:\n")?;
+            write!(stream, "{PREFIX}{end_id}:;\n")?;
             id
         }
         Ast::Builtin(_) => todo!(),
