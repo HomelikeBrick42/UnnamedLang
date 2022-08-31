@@ -67,6 +67,13 @@ static DOUBLE_CHAR_TOKENS: phf::Map<char, phf::Map<char, TokenKind>> = phf_map! 
     '\r' => phf_map! {
         '\n' => TokenKind::Newline,
     },
+    '=' => phf_map! {
+        '=' => TokenKind::EqualEqual,
+        '>' => TokenKind::FatRightArrow,
+    },
+    '!' => phf_map! {
+        '=' => TokenKind::ExclamationMarkEqual,
+    },
     '<' => phf_map! {
         '=' => TokenKind::LessThanEqual,
         '-' => TokenKind::LeftArrow,
@@ -76,9 +83,6 @@ static DOUBLE_CHAR_TOKENS: phf::Map<char, phf::Map<char, TokenKind>> = phf_map! 
     },
     '-' =>phf_map! {
         '>' => TokenKind::RightArrow,
-    },
-    '=' =>phf_map! {
-        '>' => TokenKind::FatRightArrow,
     },
 };
 

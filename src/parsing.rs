@@ -4,8 +4,9 @@ use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstCall, AstFile, AstInteger, AstName, AstParameter, AstProcedure, AstProcedureBody,
-    AstProcedureType, AstReturn, AstScope, Lexer, LexerError, Token, TokenKind,
+    Ast, AstBinary, AstCall, AstFile, AstInteger, AstName, AstParameter, AstProcedure,
+    AstProcedureBody, AstProcedureType, AstReturn, AstScope, BinaryOperator, Lexer, LexerError,
+    Token, TokenKind,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -222,8 +223,18 @@ fn parse_binary_expression(
         0
     }
 
-    fn get_binary_precedence(_kind: TokenKind) -> usize {
-        0
+    fn get_binary_precedence(kind: TokenKind) -> usize {
+        match kind {
+            TokenKind::Asterisk | TokenKind::Slash => 3,
+            TokenKind::Plus | TokenKind::Minus => 2,
+            TokenKind::EqualEqual
+            | TokenKind::ExclamationMarkEqual
+            | TokenKind::LessThan
+            | TokenKind::GreaterThan
+            | TokenKind::LessThanEqual
+            | TokenKind::GreaterThanEqual => 1,
+            _ => 0,
+        }
     }
 
     let mut left = {
@@ -262,7 +273,30 @@ fn parse_binary_expression(
                 if binary_precedence <= parent_precedence {
                     break;
                 }
-                todo!()
+                let operator = match lexer.next_token()?.kind {
+                    TokenKind::Plus => BinaryOperator::Add,
+                    TokenKind::Minus => BinaryOperator::Subtract,
+                    TokenKind::Asterisk => BinaryOperator::Multiply,
+                    TokenKind::Slash => BinaryOperator::Divide,
+                    TokenKind::EqualEqual => BinaryOperator::Equal,
+                    TokenKind::ExclamationMarkEqual => BinaryOperator::NotEqual,
+                    TokenKind::LessThan => BinaryOperator::LessThan,
+                    TokenKind::GreaterThan => BinaryOperator::GreaterThan,
+                    TokenKind::LessThanEqual => BinaryOperator::LessThanEqual,
+                    TokenKind::GreaterThanEqual => BinaryOperator::GreaterThanEqual,
+                    _ => unreachable!(),
+                };
+                let right = parse_binary_expression(lexer, binary_precedence)?;
+                Ast::Binary(
+                    AstBinary {
+                        resolving: false.into(),
+                        resolved_type: None.into(),
+                        left,
+                        operator,
+                        right,
+                    }
+                    .into(),
+                )
             }
         };
     }

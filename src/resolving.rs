@@ -3,7 +3,9 @@ use std::{collections::HashMap, rc::Rc};
 use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
-use crate::{Ast, AstBuiltin, AstParameter, AstProcedure, AstProcedureBody, AstVar, Type};
+use crate::{
+    Ast, AstBuiltin, AstParameter, AstProcedure, AstProcedureBody, AstVar, BinaryOperator, Type,
+};
 
 #[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
 pub enum ResolvingError {
@@ -85,6 +87,7 @@ pub fn resolve_names(
                 Ast::Integer(_) => (),
                 Ast::Call(_) => (),
                 Ast::Return(_) => (),
+                Ast::Binary(_) => (),
                 Ast::Builtin(_) => (),
             }
         }
@@ -178,9 +181,14 @@ pub fn resolve_names(
                 resolve_names(value, names)?;
             }
         }
+        Ast::Binary(binary) => {
+            resolve_names(&binary.left, names)?;
+            resolve_names(&binary.right, names)?;
+        }
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
+            AstBuiltin::Bool => (),
             AstBuiltin::IntegerType { size: _, signed: _ } => (),
         },
     })
@@ -217,9 +225,11 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Integer(_) => todo!(),
         Ast::Call(_) => todo!(),
         Ast::Return(_) => todo!(),
+        Ast::Binary(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
+            AstBuiltin::Bool => Type::Bool.into(),
             &AstBuiltin::IntegerType { size, signed } => Type::Integer { size, signed }.into(),
         },
     })
@@ -297,6 +307,9 @@ pub fn resolve(
                                         || call.arguments.iter().any(does_return)
                                 }
                                 Ast::Return(_) => true,
+                                Ast::Binary(binary) => {
+                                    does_return(&binary.left) || does_return(&binary.right)
+                                }
                                 Ast::Builtin(_) => false,
                             }
                         }
@@ -429,9 +442,50 @@ pub fn resolve(
                     expect_type(&Type::Void.into(), &return_type)?;
                 }
             }
+            Ast::Binary(binary) => {
+                let left_type = resolve(
+                    &binary.left,
+                    suggested_type.clone(),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                let right_type = resolve(
+                    &binary.right,
+                    suggested_type.or(left_type.clone().into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                match &binary.operator {
+                    BinaryOperator::Add
+                    | BinaryOperator::Subtract
+                    | BinaryOperator::Multiply
+                    | BinaryOperator::Divide => {
+                        if left_type.as_integer().is_none() {
+                            todo!()
+                        }
+                        expect_type(&right_type, &left_type)?;
+                        *binary.resolved_type.borrow_mut() = Some(left_type);
+                    }
+                    BinaryOperator::Equal | BinaryOperator::NotEqual => {
+                        expect_type(&right_type, &left_type)?;
+                        *binary.resolved_type.borrow_mut() = Some(Type::Bool.into());
+                    }
+                    BinaryOperator::LessThan
+                    | BinaryOperator::GreaterThan
+                    | BinaryOperator::LessThanEqual
+                    | BinaryOperator::GreaterThanEqual => {
+                        if left_type.as_integer().is_none() {
+                            todo!()
+                        }
+                        expect_type(&right_type, &left_type)?;
+                        *binary.resolved_type.borrow_mut() = Some(Type::Bool.into());
+                    }
+                }
+            }
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
+                AstBuiltin::Bool => (),
                 AstBuiltin::IntegerType { size: _, signed: _ } => (),
             },
         }

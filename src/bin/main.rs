@@ -14,7 +14,7 @@ fn main() {
         "test.lang".into(),
         "
 proc get_value() => s64 {
-    return 56
+    return 5 * 10 + 7
 }
 
 do_whatever(print_int)
@@ -42,6 +42,7 @@ proc print_char(value: u8) => s32 #extern \"putchar\"
     let mut names = HashMap::from([
         ("type".into(), Declaration::Builtin(AstBuiltin::Type.into())),
         ("void".into(), Declaration::Builtin(AstBuiltin::Void.into())),
+        ("bool".into(), Declaration::Builtin(AstBuiltin::Bool.into())),
         (
             "s8".into(),
             Declaration::Builtin(

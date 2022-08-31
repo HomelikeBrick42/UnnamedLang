@@ -43,6 +43,10 @@ pub enum TokenKind {
     Asterisk,
     #[display(fmt = "/")]
     Slash,
+    #[display(fmt = "==")]
+    EqualEqual,
+    #[display(fmt = "!=")]
+    ExclamationMarkEqual,
     #[display(fmt = "<")]
     LessThan,
     #[display(fmt = ">")]

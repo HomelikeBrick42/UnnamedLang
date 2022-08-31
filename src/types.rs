@@ -6,6 +6,7 @@ use enum_as_inner::EnumAsInner;
 pub enum Type {
     Type,
     Void,
+    Bool,
     Integer {
         size: usize,
         signed: bool,
@@ -24,6 +25,7 @@ impl Display for Type {
         match self {
             Type::Type => write!(f, "type"),
             Type::Void => write!(f, "void"),
+            Type::Bool => write!(f, "bool"),
             Type::Integer { size, signed } => {
                 write!(f, "{}{}", if *signed { "s" } else { "u" }, size * 8)
             }

@@ -21,6 +21,7 @@ pub enum Ast {
     Integer(Rc<AstInteger>),
     Call(Rc<AstCall>),
     Return(Rc<AstReturn>),
+    Binary(Rc<AstBinary>),
     Builtin(Rc<AstBuiltin>),
 }
 
@@ -48,10 +49,12 @@ impl Ast {
             Ast::Integer(integer) => integer.resolved_type.borrow().clone(),
             Ast::Call(call) => call.resolved_type.borrow().clone(),
             Ast::Return(returnn) => returnn.resolved_type.borrow().clone(),
+            Ast::Binary(binary) => binary.resolved_type.borrow().clone(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
-                AstBuiltin::Type => Some(Type::Type.into()),
-                AstBuiltin::Void => Some(Type::Type.into()),
-                AstBuiltin::IntegerType { size: _, signed: _ } => Some(Type::Type.into()),
+                AstBuiltin::Bool
+                | AstBuiltin::Type
+                | AstBuiltin::Void
+                | AstBuiltin::IntegerType { size: _, signed: _ } => Some(Type::Type.into()),
             },
         }
     }
@@ -68,9 +71,11 @@ impl Ast {
             Ast::Integer(integer) => integer.resolving.set(value),
             Ast::Call(call) => call.resolving.set(value),
             Ast::Return(returnn) => returnn.resolving.set(value),
+            Ast::Binary(binary) => binary.resolving.set(value),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
+                AstBuiltin::Bool => (),
                 AstBuiltin::IntegerType { size: _, signed: _ } => (),
             },
         }
@@ -88,9 +93,11 @@ impl Ast {
             Ast::Integer(integer) => integer.resolving.get(),
             Ast::Call(call) => call.resolving.get(),
             Ast::Return(returnn) => returnn.resolving.get(),
+            Ast::Binary(binary) => binary.resolving.get(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => false,
                 AstBuiltin::Void => false,
+                AstBuiltin::Bool => false,
                 AstBuiltin::IntegerType { size: _, signed: _ } => false,
             },
         }
@@ -108,6 +115,7 @@ impl Ast {
             Ast::Integer(integer) => Rc::as_ptr(integer) as *const _,
             Ast::Call(call) => Rc::as_ptr(call) as *const _,
             Ast::Return(returnn) => Rc::as_ptr(returnn) as *const _,
+            Ast::Binary(binary) => Rc::as_ptr(binary) as *const _,
             Ast::Builtin(builtin) => Rc::as_ptr(builtin) as *const _,
         }
     }
@@ -199,9 +207,33 @@ pub struct AstReturn {
     pub value: Option<Ast>,
 }
 
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
+pub enum BinaryOperator {
+    Add,
+    Subtract,
+    Multiply,
+    Divide,
+    Equal,
+    NotEqual,
+    LessThan,
+    GreaterThan,
+    LessThanEqual,
+    GreaterThanEqual,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstBinary {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub left: Ast,
+    pub operator: BinaryOperator,
+    pub right: Ast,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum AstBuiltin {
     Type,
     Void,
+    Bool,
     IntegerType { size: usize, signed: bool },
 }

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::{Ast, AstParameter, AstProcedure, AstProcedureBody, Type};
+use crate::{Ast, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator, Type};
 
 const PREFIX: &'static str = "_";
 
@@ -18,6 +18,12 @@ fn emit_type(
         }
         Type::Void => {
             write!(stream, "Void")?;
+            if let Some(name) = name {
+                write!(stream, " {name}")?;
+            }
+        }
+        Type::Bool => {
+            write!(stream, "_Bool")?;
             if let Some(name) = name {
                 write!(stream, " {name}")?;
             }
@@ -190,6 +196,10 @@ pub fn emit(
                                 if let Some(value) = &returnn.value {
                                     get_all_procedures(value, procedures, walked);
                                 }
+                            }
+                            Ast::Binary(binary) => {
+                                get_all_procedures(&binary.left, procedures, walked);
+                                get_all_procedures(&binary.right, procedures, walked);
                             }
                             Ast::Builtin(_) => (),
                         }
@@ -434,6 +444,40 @@ pub fn emit(
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
+            id
+        }
+        Ast::Binary(binary) => {
+            let left = emit(&binary.left, next_id, stream)?;
+            let right = emit(&binary.right, next_id, stream)?;
+            let id = *next_id;
+            *next_id += 1;
+            let typ = binary.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, " = &(")?;
+            emit_type(typ, None, stream)?;
+            write!(stream, "){{")?;
+            assert!(binary.left.get_type().unwrap().as_integer().is_some());
+            assert!(binary.right.get_type().unwrap().as_integer().is_some());
+            match &binary.operator {
+                BinaryOperator::Add => write!(stream, "*{PREFIX}{left} + *{PREFIX}{right}")?,
+                BinaryOperator::Subtract => write!(stream, "*{PREFIX}{left} - *{PREFIX}{right}")?,
+                BinaryOperator::Multiply => write!(stream, "*{PREFIX}{left} * *{PREFIX}{right}")?,
+                BinaryOperator::Divide => write!(stream, "*{PREFIX}{left} / *{PREFIX}{right}")?,
+                BinaryOperator::Equal => write!(stream, "*{PREFIX}{left} == *{PREFIX}{right}")?,
+                BinaryOperator::NotEqual => write!(stream, "*{PREFIX}{left} != *{PREFIX}{right}")?,
+                BinaryOperator::LessThan => write!(stream, "*{PREFIX}{left} < *{PREFIX}{right}")?,
+                BinaryOperator::GreaterThan => {
+                    write!(stream, "*{PREFIX}{left} > *{PREFIX}{right}")?
+                }
+                BinaryOperator::LessThanEqual => {
+                    write!(stream, "*{PREFIX}{left} <= *{PREFIX}{right}")?
+                }
+                BinaryOperator::GreaterThanEqual => {
+                    write!(stream, "*{PREFIX}{left} >= *{PREFIX}{right}")?
+                }
+            }
+            write!(stream, "}};\n")?;
             id
         }
         Ast::Builtin(_) => todo!(),
