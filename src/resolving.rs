@@ -4,7 +4,8 @@ use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstBuiltin, AstParameter, AstProcedure, AstProcedureBody, AstVar, BinaryOperator, Type,
+    Ast, AstBuiltin, AstLet, AstParameter, AstProcedure, AstProcedureBody, AstVar, BinaryOperator,
+    Type,
 };
 
 #[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
@@ -23,6 +24,7 @@ pub enum ResolvingError {
 pub enum Declaration {
     Procedure(Rc<AstProcedure>),
     Parameter(Rc<AstParameter>),
+    Let(Rc<AstLet>),
     Var(Rc<AstVar>),
     Builtin(Rc<AstBuiltin>),
 }
@@ -36,6 +38,7 @@ impl Declaration {
         match self {
             Declaration::Procedure(procedure) => Ast::Procedure(procedure.clone()),
             Declaration::Parameter(parameter) => Ast::Parameter(parameter.clone()),
+            Declaration::Let(declaration) => Ast::LetDeclaration(declaration.clone()),
             Declaration::Var(declaration) => Ast::VarDeclaration(declaration.clone()),
             Declaration::Builtin(builtin) => Ast::Builtin(builtin.clone()),
         }
@@ -73,6 +76,16 @@ pub fn resolve_names(
                 Ast::ProcedureType(_) => (),
                 Ast::Parameter(_) => (),
                 Ast::Scope(_) => (),
+                Ast::LetDeclaration(declaration) => {
+                    if let Some(_) = names.insert(
+                        declaration.name.clone(),
+                        Declaration::Let(declaration.clone()),
+                    ) {
+                        return Err(ResolvingError::Redeclaration {
+                            name: declaration.name.clone(),
+                        });
+                    }
+                }
                 Ast::VarDeclaration(declaration) => {
                     if let Some(_) = names.insert(
                         declaration.name.clone(),
@@ -146,8 +159,24 @@ pub fn resolve_names(
         Ast::Scope(scope) => {
             scope_like(&scope.expressions, &mut names.clone())?;
         }
+        Ast::LetDeclaration(declaration) => {
+            if let Some(typ) = &declaration.typ {
+                resolve_names(typ, names)?;
+            }
+            resolve_names(&declaration.value, names)?;
+            if let Some(_) = names.insert(
+                declaration.name.clone(),
+                Declaration::Let(declaration.clone()),
+            ) {
+                return Err(ResolvingError::Redeclaration {
+                    name: declaration.name.clone(),
+                });
+            }
+        }
         Ast::VarDeclaration(declaration) => {
-            resolve_names(&declaration.typ, names)?;
+            if let Some(typ) = &declaration.typ {
+                resolve_names(typ, names)?;
+            }
             resolve_names(&declaration.value, names)?;
             if let Some(_) = names.insert(
                 declaration.name.clone(),
@@ -228,6 +257,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         .into(),
         Ast::Parameter(_) => todo!(),
         Ast::Scope(_) => todo!(),
+        Ast::LetDeclaration(_) => todo!(),
         Ast::VarDeclaration(_) => todo!(),
         Ast::Name(name) => eval_type(name.resolved_declaration.borrow().as_ref().unwrap())?,
         Ast::Integer(_) => todo!(),
@@ -308,6 +338,7 @@ pub fn resolve(
                                 Ast::ProcedureType(_) => false,
                                 Ast::Parameter(_) => false,
                                 Ast::Scope(scope) => scope.expressions.iter().any(does_return),
+                                Ast::LetDeclaration(declaration) => does_return(&declaration.value),
                                 Ast::VarDeclaration(declaration) => does_return(&declaration.value),
                                 Ast::Name(_) => false,
                                 Ast::Integer(_) => false,
@@ -364,23 +395,49 @@ pub fn resolve(
                     resolve(expression, None, defered_asts, parent_procedure)?;
                 }
             }
-            Ast::VarDeclaration(declaration) => {
-                let type_type = resolve(
-                    &declaration.typ,
-                    Some(Type::Type.into()),
-                    defered_asts,
-                    &None,
-                )?;
-                expect_type(&type_type, &Type::Type.into())?;
-                let resolved_type = eval_type(&declaration.typ)?;
-                *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
+            Ast::LetDeclaration(declaration) => {
+                let suggested_type = if let Some(typ) = &declaration.typ {
+                    let type_type = resolve(typ, Some(Type::Type.into()), defered_asts, &None)?;
+                    expect_type(&type_type, &Type::Type.into())?;
+                    let resolved_type = eval_type(typ)?;
+                    *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
+                    Some(resolved_type)
+                } else {
+                    suggested_type
+                };
                 let value_type = resolve(
                     &declaration.value,
-                    declaration.resolved_type.borrow().clone(),
+                    suggested_type,
                     defered_asts,
                     parent_procedure,
                 )?;
-                expect_type(&value_type, &resolved_type)?;
+                if declaration.resolved_type.borrow().is_none() {
+                    *declaration.resolved_type.borrow_mut() = Some(value_type);
+                } else {
+                    expect_type(&value_type, &value_type)?;
+                }
+            }
+            Ast::VarDeclaration(declaration) => {
+                let suggested_type = if let Some(typ) = &declaration.typ {
+                    let type_type = resolve(typ, Some(Type::Type.into()), defered_asts, &None)?;
+                    expect_type(&type_type, &Type::Type.into())?;
+                    let resolved_type = eval_type(typ)?;
+                    *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
+                    Some(resolved_type)
+                } else {
+                    suggested_type
+                };
+                let value_type = resolve(
+                    &declaration.value,
+                    suggested_type,
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                if declaration.resolved_type.borrow().is_none() {
+                    *declaration.resolved_type.borrow_mut() = Some(value_type);
+                } else {
+                    expect_type(&value_type, &value_type)?;
+                }
             }
             Ast::Name(name) => {
                 let declaration = name.resolved_declaration.borrow();

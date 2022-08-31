@@ -16,6 +16,7 @@ pub enum Ast {
     ProcedureType(Rc<AstProcedureType>),
     Parameter(Rc<AstParameter>),
     Scope(Rc<AstScope>),
+    LetDeclaration(Rc<AstLet>),
     VarDeclaration(Rc<AstVar>),
     Name(Rc<AstName>),
     Integer(Rc<AstInteger>),
@@ -40,6 +41,7 @@ impl Ast {
             Ast::ProcedureType(procedure_type) => procedure_type.resolved_type.borrow().clone(),
             Ast::Parameter(parameter) => parameter.resolved_type.borrow().clone(),
             Ast::Scope(scope) => scope.resolved_type.borrow().clone(),
+            Ast::LetDeclaration(declaration) => declaration.resolved_type.borrow().clone(),
             Ast::VarDeclaration(declaration) => declaration.resolved_type.borrow().clone(),
             Ast::Name(name) => name
                 .resolved_declaration
@@ -68,6 +70,7 @@ impl Ast {
             Ast::ProcedureType(procedure_type) => procedure_type.resolving.set(value),
             Ast::Parameter(parameter) => parameter.resolving.set(value),
             Ast::Scope(scope) => scope.resolving.set(value),
+            Ast::LetDeclaration(declaration) => declaration.resolving.set(value),
             Ast::VarDeclaration(declaration) => declaration.resolving.set(value),
             Ast::Name(name) => name.resolving.set(value),
             Ast::Integer(integer) => integer.resolving.set(value),
@@ -91,6 +94,7 @@ impl Ast {
             Ast::ProcedureType(procedure_type) => procedure_type.resolving.get(),
             Ast::Parameter(parameter) => parameter.resolving.get(),
             Ast::Scope(scope) => scope.resolving.get(),
+            Ast::LetDeclaration(declaration) => declaration.resolving.get(),
             Ast::VarDeclaration(declaration) => declaration.resolving.get(),
             Ast::Name(name) => name.resolving.get(),
             Ast::Integer(integer) => integer.resolving.get(),
@@ -114,6 +118,7 @@ impl Ast {
             Ast::ProcedureType(procedure_type) => Rc::as_ptr(procedure_type) as *const _,
             Ast::Parameter(parameter) => Rc::as_ptr(parameter) as *const _,
             Ast::Scope(scope) => Rc::as_ptr(scope) as *const _,
+            Ast::LetDeclaration(declaration) => Rc::as_ptr(declaration) as *const _,
             Ast::VarDeclaration(declaration) => Rc::as_ptr(declaration) as *const _,
             Ast::Name(name) => Rc::as_ptr(name) as *const _,
             Ast::Integer(integer) => Rc::as_ptr(integer) as *const _,
@@ -175,11 +180,20 @@ pub struct AstScope {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct AstLet {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub name: String,
+    pub typ: Option<Ast>,
+    pub value: Ast,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct AstVar {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
     pub name: String,
-    pub typ: Ast,
+    pub typ: Option<Ast>,
     pub value: Ast,
 }
 

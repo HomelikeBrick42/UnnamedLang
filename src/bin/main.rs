@@ -40,7 +40,8 @@ proc do_whatever(print_proc: proc(u64) => void) => void {
     print_char(10)
 }
 
-proc print_char(value: u8) => s32 #extern \"putchar\"
+proc print_char(value: s32) => s32 #extern \"putchar\"
+proc input_char() => s32 #extern \"getchar\"
 ",
     ));
     let program = Ast::File(file);

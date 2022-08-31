@@ -174,8 +174,16 @@ pub fn emit(
                                     get_all_procedures(expression, procedures, walked);
                                 }
                             }
+                            Ast::LetDeclaration(declaration) => {
+                                if let Some(typ) = &declaration.typ {
+                                    get_all_procedures(typ, procedures, walked);
+                                }
+                                get_all_procedures(&declaration.value, procedures, walked);
+                            }
                             Ast::VarDeclaration(declaration) => {
-                                get_all_procedures(&declaration.typ, procedures, walked);
+                                if let Some(typ) = &declaration.typ {
+                                    get_all_procedures(typ, procedures, walked);
+                                }
                                 get_all_procedures(&declaration.value, procedures, walked);
                             }
                             Ast::Name(name) => {
@@ -383,6 +391,7 @@ pub fn emit(
             write!(stream, " = &(Void){{}};\n")?;
             id
         }
+        Ast::LetDeclaration(_) => todo!(),
         Ast::VarDeclaration(_) => todo!(),
         Ast::Name(name) => {
             let declaration = name.resolved_declaration.borrow();
