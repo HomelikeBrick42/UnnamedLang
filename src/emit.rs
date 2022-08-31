@@ -201,6 +201,13 @@ pub fn emit(
                                 get_all_procedures(&binary.left, procedures, walked);
                                 get_all_procedures(&binary.right, procedures, walked);
                             }
+                            Ast::If(iff) => {
+                                get_all_procedures(&iff.condition, procedures, walked);
+                                get_all_procedures(&iff.then_expression, procedures, walked);
+                                if let Some(else_expression) = &iff.else_expression {
+                                    get_all_procedures(else_expression, procedures, walked);
+                                }
+                            }
                             Ast::Builtin(_) => (),
                         }
                     }
@@ -318,9 +325,14 @@ pub fn emit(
                 write!(stream, "return 0;\n")?;
                 write!(stream, "}}\n")?;
                 write!(stream, "\n")?;
-                write!(stream, "Void print_int(s64 value) {{\n")?;
+                write!(stream, "Void print_s64(s64 value) {{\n")?;
                 write!(stream, "extern int printf(const char *, ...);\n")?;
                 write!(stream, "printf(\"%lld\\n\", value);\n")?;
+                write!(stream, "return (Void){{}};\n")?;
+                write!(stream, "}}\n")?;
+                write!(stream, "Void print_u64(u64 value) {{\n")?;
+                write!(stream, "extern int printf(const char *, ...);\n")?;
+                write!(stream, "printf(\"%llu\\n\", value);\n")?;
                 write!(stream, "return (Void){{}};\n")?;
                 write!(stream, "}}\n")?;
             }
@@ -478,6 +490,33 @@ pub fn emit(
                 }
             }
             write!(stream, "}};\n")?;
+            id
+        }
+        Ast::If(iff) => {
+            let typ = iff.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            let condition = emit(&iff.condition, next_id, stream)?;
+            let else_id = *next_id;
+            *next_id += 1;
+            let id = *next_id;
+            *next_id += 1;
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, ";\n")?;
+            write!(
+                stream,
+                "if (!*{PREFIX}{condition}) goto {PREFIX}{else_id};\n"
+            )?;
+            let then_expression = emit(&iff.then_expression, next_id, stream)?;
+            write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
+            let end_id = *next_id;
+            *next_id += 1;
+            write!(stream, "goto {PREFIX}{end_id};\n")?;
+            write!(stream, "{PREFIX}{else_id}:\n")?;
+            if let Some(else_expression) = &iff.else_expression {
+                let else_expression = emit(else_expression, next_id, stream)?;
+                write!(stream, "{PREFIX}{id} = {PREFIX}{else_expression};\n")?;
+            }
+            write!(stream, "{PREFIX}{end_id}:\n")?;
             id
         }
         Ast::Builtin(_) => todo!(),

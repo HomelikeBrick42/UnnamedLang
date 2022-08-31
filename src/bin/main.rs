@@ -13,11 +13,15 @@ fn main() {
     let file = unwrap_error(parse_file(
         "test.lang".into(),
         "
-proc get_value() => s64 {
-    return 5 * 10 + 7
+proc factorial(n: u64) => u64 {
+    if n <= 1 {
+        return 1
+    } else {
+        return n * factorial(n - 1)
+    }
 }
 
-do_whatever(print_int)
+do_whatever(print_u64)
 
 proc loop() => void {
     print_char(65)
@@ -27,10 +31,11 @@ proc loop() => void {
 
 // loop()
 
-proc print_int(value: s64) => void #extern \"print_int\"
+proc print_s64(value: s64) => void #extern \"print_s64\"
+proc print_u64(value: u64) => void #extern \"print_u64\"
 
-proc do_whatever(print_proc: proc(s64) => void) => void {
-    print_proc(get_value())
+proc do_whatever(print_proc: proc(u64) => void) => void {
+    print_proc(factorial(6))
     print_char(69)
     print_char(10)
 }

@@ -88,6 +88,7 @@ pub fn resolve_names(
                 Ast::Call(_) => (),
                 Ast::Return(_) => (),
                 Ast::Binary(_) => (),
+                Ast::If(_) => (),
                 Ast::Builtin(_) => (),
             }
         }
@@ -185,6 +186,13 @@ pub fn resolve_names(
             resolve_names(&binary.left, names)?;
             resolve_names(&binary.right, names)?;
         }
+        Ast::If(iff) => {
+            resolve_names(&iff.condition, names)?;
+            resolve_names(&iff.then_expression, names)?;
+            if let Some(else_expression) = &iff.else_expression {
+                resolve_names(else_expression, names)?;
+            }
+        }
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
@@ -226,6 +234,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Call(_) => todo!(),
         Ast::Return(_) => todo!(),
         Ast::Binary(_) => todo!(),
+        Ast::If(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
@@ -310,6 +319,13 @@ pub fn resolve(
                                 Ast::Binary(binary) => {
                                     does_return(&binary.left) || does_return(&binary.right)
                                 }
+                                Ast::If(iff) => iff
+                                    .else_expression
+                                    .as_ref()
+                                    .map(|elsee| {
+                                        does_return(&iff.then_expression) && does_return(elsee)
+                                    })
+                                    .unwrap_or(false),
                                 Ast::Builtin(_) => false,
                             }
                         }
@@ -451,7 +467,7 @@ pub fn resolve(
                 )?;
                 let right_type = resolve(
                     &binary.right,
-                    suggested_type.or(left_type.clone().into()),
+                    left_type.clone().into(),
                     defered_asts,
                     parent_procedure,
                 )?;
@@ -481,6 +497,33 @@ pub fn resolve(
                         *binary.resolved_type.borrow_mut() = Some(Type::Bool.into());
                     }
                 }
+            }
+            Ast::If(iff) => {
+                let condition_type = resolve(
+                    &iff.condition,
+                    Some(Type::Bool.into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                expect_type(&condition_type, &Type::Bool.into())?;
+                let then_type = resolve(
+                    &iff.then_expression,
+                    suggested_type.clone(),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                if let Some(else_expression) = &iff.else_expression {
+                    let else_type = resolve(
+                        &else_expression,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    expect_type(&else_type, &then_type)?;
+                } else {
+                    expect_type(&then_type, &Type::Void.into())?;
+                }
+                *iff.resolved_type.borrow_mut() = Some(then_type);
             }
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),

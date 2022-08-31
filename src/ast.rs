@@ -22,6 +22,7 @@ pub enum Ast {
     Call(Rc<AstCall>),
     Return(Rc<AstReturn>),
     Binary(Rc<AstBinary>),
+    If(Rc<AstIf>),
     Builtin(Rc<AstBuiltin>),
 }
 
@@ -50,6 +51,7 @@ impl Ast {
             Ast::Call(call) => call.resolved_type.borrow().clone(),
             Ast::Return(returnn) => returnn.resolved_type.borrow().clone(),
             Ast::Binary(binary) => binary.resolved_type.borrow().clone(),
+            Ast::If(iff) => iff.resolved_type.borrow().clone(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Bool
                 | AstBuiltin::Type
@@ -72,6 +74,7 @@ impl Ast {
             Ast::Call(call) => call.resolving.set(value),
             Ast::Return(returnn) => returnn.resolving.set(value),
             Ast::Binary(binary) => binary.resolving.set(value),
+            Ast::If(iff) => iff.resolving.set(value),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
@@ -94,6 +97,7 @@ impl Ast {
             Ast::Call(call) => call.resolving.get(),
             Ast::Return(returnn) => returnn.resolving.get(),
             Ast::Binary(binary) => binary.resolving.get(),
+            Ast::If(iff) => iff.resolving.get(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => false,
                 AstBuiltin::Void => false,
@@ -116,6 +120,7 @@ impl Ast {
             Ast::Call(call) => Rc::as_ptr(call) as *const _,
             Ast::Return(returnn) => Rc::as_ptr(returnn) as *const _,
             Ast::Binary(binary) => Rc::as_ptr(binary) as *const _,
+            Ast::If(iff) => Rc::as_ptr(iff) as *const _,
             Ast::Builtin(builtin) => Rc::as_ptr(builtin) as *const _,
         }
     }
@@ -228,6 +233,15 @@ pub struct AstBinary {
     pub left: Ast,
     pub operator: BinaryOperator,
     pub right: Ast,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstIf {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub condition: Ast,
+    pub then_expression: Ast,
+    pub else_expression: Option<Ast>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
