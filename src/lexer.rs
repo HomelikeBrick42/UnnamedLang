@@ -36,6 +36,7 @@ static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
     "if" => TokenKind::IfKeyword,
     "else" => TokenKind::ElseKeyword,
     "while" => TokenKind::WhileKeyword,
+    "cast" => TokenKind::CastKeyword,
 };
 
 static DIRECTIVES: phf::Map<&'static str, TokenKind> = phf_map! {

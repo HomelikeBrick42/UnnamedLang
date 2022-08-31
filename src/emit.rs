@@ -216,6 +216,10 @@ pub fn emit(
                                     get_all_procedures(else_expression, procedures, walked);
                                 }
                             }
+                            Ast::Cast(cast) => {
+                                get_all_procedures(&cast.typ, procedures, walked);
+                                get_all_procedures(&cast.operand, procedures, walked);
+                            }
                             Ast::Builtin(_) => (),
                         }
                     }
@@ -527,6 +531,26 @@ pub fn emit(
             }
             write!(stream, "{PREFIX}{end_id}:;\n")?;
             id
+        }
+        Ast::Cast(cast) => {
+            let operand = emit(&cast.operand, next_id, stream)?;
+            let typ = cast.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            if &cast.operand.get_type().unwrap() == typ {
+                operand
+            } else {
+                assert!(typ.as_integer().is_some());
+                assert!(cast.operand.get_type().unwrap().as_integer().is_some());
+                let id = *next_id;
+                *next_id += 1;
+                emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
+                write!(stream, " = &(")?;
+                emit_type(&typ, None, stream)?;
+                write!(stream, "){{(")?;
+                emit_type(&typ, None, stream)?;
+                write!(stream, ")*{PREFIX}{operand}}};\n")?;
+                id
+            }
         }
         Ast::Builtin(_) => todo!(),
     })

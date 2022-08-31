@@ -21,7 +21,7 @@ proc factorial(n: u64) => u64 {
     }
 }
 
-do_whatever(print_u64)
+do_whatever(print_u64, 42)
 
 proc loop() => void {
     print_char(65)
@@ -34,8 +34,9 @@ proc loop() => void {
 proc print_s64(value: s64) => void #extern \"print_s64\"
 proc print_u64(value: u64) => void #extern \"print_u64\"
 
-proc do_whatever(print_proc: proc(u64) => void) => void {
+proc do_whatever(print_proc: proc(u64) => void, value: s64) => void {
     print_proc(factorial(6))
+    print_proc(cast(u64) value)
     print_char(69)
     print_char(10)
 }

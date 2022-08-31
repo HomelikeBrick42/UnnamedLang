@@ -71,6 +71,8 @@ pub enum TokenKind {
     ElseKeyword,
     #[display(fmt = "while")]
     WhileKeyword,
+    #[display(fmt = "cast")]
+    CastKeyword,
 }
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]

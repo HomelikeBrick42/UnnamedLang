@@ -102,6 +102,7 @@ pub fn resolve_names(
                 Ast::Return(_) => (),
                 Ast::Binary(_) => (),
                 Ast::If(_) => (),
+                Ast::Cast(_) => (),
                 Ast::Builtin(_) => (),
             }
         }
@@ -222,6 +223,10 @@ pub fn resolve_names(
                 resolve_names(else_expression, names)?;
             }
         }
+        Ast::Cast(cast) => {
+            resolve_names(&cast.typ, names)?;
+            resolve_names(&cast.operand, names)?;
+        }
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
@@ -265,6 +270,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Return(_) => todo!(),
         Ast::Binary(_) => todo!(),
         Ast::If(_) => todo!(),
+        Ast::Cast(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
@@ -357,6 +363,7 @@ pub fn resolve(
                                         does_return(&iff.then_expression) && does_return(elsee)
                                     })
                                     .unwrap_or(false),
+                                Ast::Cast(cast) => does_return(&cast.operand),
                                 Ast::Builtin(_) => false,
                             }
                         }
@@ -581,6 +588,28 @@ pub fn resolve(
                     expect_type(&then_type, &Type::Void.into())?;
                 }
                 *iff.resolved_type.borrow_mut() = Some(then_type);
+            }
+            Ast::Cast(cast) => {
+                let type_type = resolve(
+                    &cast.typ,
+                    Some(Type::Type.into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                expect_type(&type_type, &Type::Type.into())?;
+                let typ = eval_type(&cast.typ)?;
+                let operand_type = resolve(
+                    &cast.operand,
+                    typ.clone().into(),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                if operand_type != typ
+                    && !(operand_type.as_integer().is_some() && typ.as_integer().is_some())
+                {
+                    todo!()
+                }
+                *cast.resolved_type.borrow_mut() = Some(typ);
             }
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),

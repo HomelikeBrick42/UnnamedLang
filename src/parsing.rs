@@ -4,9 +4,9 @@ use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstBinary, AstCall, AstFile, AstIf, AstInteger, AstName, AstParameter, AstProcedure,
-    AstProcedureBody, AstProcedureType, AstReturn, AstScope, BinaryOperator, Lexer, LexerError,
-    Token, TokenKind,
+    Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstName, AstParameter,
+    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, BinaryOperator, Lexer,
+    LexerError, Token, TokenKind,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -259,7 +259,22 @@ fn parse_binary_expression(
         }
     }
 
-    let mut left = {
+    let mut left = if lexer.peek_token()?.kind == TokenKind::CastKeyword {
+        expect_token(lexer, TokenKind::CastKeyword)?;
+        expect_token(lexer, TokenKind::OpenParenthesis)?;
+        let typ = parse_expression(lexer)?;
+        expect_token(lexer, TokenKind::CloseParenthesis)?;
+        let operand = parse_binary_expression(lexer, usize::MAX)?;
+        Ast::Cast(
+            AstCast {
+                resolving: false.into(),
+                resolved_type: None.into(),
+                typ,
+                operand,
+            }
+            .into(),
+        )
+    } else {
         let unary_precedence = get_unary_precedence(lexer.peek_token()?.kind);
         if unary_precedence > 0 {
             todo!()
