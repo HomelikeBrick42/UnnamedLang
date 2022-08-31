@@ -399,8 +399,32 @@ pub fn emit(
             write!(stream, " = &(Void){{}};\n")?;
             id
         }
-        Ast::LetDeclaration(_) => todo!(),
-        Ast::VarDeclaration(_) => todo!(),
+        Ast::LetDeclaration(declaration) => {
+            let typ = declaration.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            let value = emit(&declaration.value, next_id, stream)?;
+            let id = *next_id;
+            *next_id += 1;
+            let name = format!("_{}_{}", Rc::as_ptr(declaration) as usize, declaration.name);
+            emit_type(&typ, name.clone().into(), stream)?;
+            write!(stream, " = {PREFIX}{value};\n")?;
+            emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, " = &{name};\n")?;
+            id
+        }
+        Ast::VarDeclaration(declaration) => {
+            let typ = declaration.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            let value = emit(&declaration.value, next_id, stream)?;
+            let id = *next_id;
+            *next_id += 1;
+            let name = format!("_{}_{}", Rc::as_ptr(declaration) as usize, declaration.name);
+            emit_type(&typ, name.clone().into(), stream)?;
+            write!(stream, " = *{PREFIX}{value};\n")?;
+            emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, " = &{name};\n")?;
+            id
+        }
         Ast::Name(name) => {
             let declaration = name.resolved_declaration.borrow();
             let declaration = declaration.as_ref().unwrap();

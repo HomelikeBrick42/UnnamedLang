@@ -4,8 +4,8 @@ use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstName, AstParameter,
-    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, AstWhile,
+    Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstLet, AstName, AstParameter,
+    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, AstVar, AstWhile,
     BinaryOperator, Lexer, LexerError, SourceLocation, SourceSpan, Token, TokenKind,
 };
 
@@ -274,6 +274,60 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     ),
                     condition,
                     then_expression,
+                }
+                .into(),
+            )
+        }
+
+        TokenKind::LetKeyword => {
+            let let_token = expect_token(lexer, TokenKind::LetKeyword)?;
+            let name = expect_token(lexer, TokenKind::Name)?
+                .data
+                .into_string()
+                .unwrap();
+            let typ = if lexer.peek_token()?.kind == TokenKind::Colon {
+                expect_token(lexer, TokenKind::Colon)?;
+                Some(parse_expression(lexer)?)
+            } else {
+                None
+            };
+            expect_token(lexer, TokenKind::LeftArrow)?;
+            let value = parse_expression(lexer)?;
+            Ast::LetDeclaration(
+                AstLet {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    location: SourceSpan::combine_spans(&let_token.location, &value.get_location()),
+                    name,
+                    typ,
+                    value,
+                }
+                .into(),
+            )
+        }
+
+        TokenKind::VarKeyword => {
+            let var_token = expect_token(lexer, TokenKind::VarKeyword)?;
+            let name = expect_token(lexer, TokenKind::Name)?
+                .data
+                .into_string()
+                .unwrap();
+            let typ = if lexer.peek_token()?.kind == TokenKind::Colon {
+                expect_token(lexer, TokenKind::Colon)?;
+                Some(parse_expression(lexer)?)
+            } else {
+                None
+            };
+            expect_token(lexer, TokenKind::LeftArrow)?;
+            let value = parse_expression(lexer)?;
+            Ast::VarDeclaration(
+                AstVar {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    location: SourceSpan::combine_spans(&var_token.location, &value.get_location()),
+                    name,
+                    typ,
+                    value,
                 }
                 .into(),
             )

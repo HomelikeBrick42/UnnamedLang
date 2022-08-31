@@ -31,6 +31,16 @@ proc loop() => void {
 
 // loop()
 
+proc print_n(n: u64) => void {
+    var i: u64 <- 1
+    while i <= n {
+        print_u64(i)
+        // i <- i + 1
+    }
+}
+
+print_n(10)
+
 // while 0 == 0 {
 //     print_char(input_char())
 // }
