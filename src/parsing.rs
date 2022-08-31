@@ -6,7 +6,7 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstName, AstParameter,
     AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, AstWhile,
-    BinaryOperator, Lexer, LexerError, Token, TokenKind,
+    BinaryOperator, Lexer, LexerError, SourceLocation, SourceSpan, Token, TokenKind,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -30,8 +30,8 @@ impl From<LexerError> for ParsingError {
     }
 }
 
-pub fn parse_file(filepath: String, source: &str) -> Result<Rc<AstFile>, ParsingError> {
-    let mut lexer = Lexer::new(filepath, source);
+pub fn parse_file(filepath: &str, source: &str) -> Result<Rc<AstFile>, ParsingError> {
+    let mut lexer = Lexer::new(filepath.into(), source);
     let mut expressions = vec![];
     loop {
         allow_newlines(&mut lexer)?;
@@ -41,10 +41,26 @@ pub fn parse_file(filepath: String, source: &str) -> Result<Rc<AstFile>, Parsing
         expressions.push(parse_expression(&mut lexer)?);
         expect_newline(&mut lexer)?;
     }
-    expect_token(&mut lexer, TokenKind::EndOfFile)?;
+    let end_of_file_token = expect_token(&mut lexer, TokenKind::EndOfFile)?;
     Ok(AstFile {
         resolving: false.into(),
         resolved_type: None.into(),
+        location: SourceSpan::combine_spans(
+            &SourceSpan {
+                filepath: filepath.into(),
+                start: SourceLocation {
+                    position: 0,
+                    line: 1,
+                    column: 1,
+                },
+                end: SourceLocation {
+                    position: 0,
+                    line: 1,
+                    column: 1,
+                },
+            },
+            &end_of_file_token.location,
+        ),
         expressions,
     }
     .into())
@@ -62,6 +78,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 AstName {
                     resolving: false.into(),
                     resolved_declaration: None.into(),
+                    location: token.location,
                     name: token.data.into_string().unwrap(),
                 }
                 .into(),
@@ -74,6 +91,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 AstInteger {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    location: token.location,
                     value: token.data.into_integer().unwrap(),
                 }
                 .into(),
@@ -88,7 +106,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
         }
 
         TokenKind::ProcKeyword => {
-            expect_token(lexer, TokenKind::ProcKeyword)?;
+            let proc_token = expect_token(lexer, TokenKind::ProcKeyword)?;
             if lexer.peek_token()?.kind == TokenKind::OpenParenthesis {
                 expect_token(lexer, TokenKind::OpenParenthesis)?;
                 allow_newline(lexer)?;
@@ -105,6 +123,10 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     AstProcedureType {
                         resolving: false.into(),
                         resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &proc_token.location,
+                            &return_type.get_location(),
+                        ),
                         parameter_types,
                         return_type,
                     }
@@ -119,17 +141,18 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 allow_newline(lexer)?;
                 let mut parameters = vec![];
                 while lexer.peek_token()?.kind != TokenKind::CloseParenthesis {
-                    let name = expect_token(lexer, TokenKind::Name)?
-                        .data
-                        .into_string()
-                        .unwrap();
+                    let name_token = expect_token(lexer, TokenKind::Name)?;
                     expect_token(lexer, TokenKind::Colon)?;
                     let typ = parse_expression(lexer)?;
                     parameters.push(
                         AstParameter {
                             resolving: false.into(),
                             resolved_type: None.into(),
-                            name,
+                            location: SourceSpan::combine_spans(
+                                &name_token.location,
+                                &typ.get_location(),
+                            ),
+                            name: name_token.data.into_string().unwrap(),
                             typ,
                         }
                         .into(),
@@ -139,20 +162,31 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
                 expect_token(lexer, TokenKind::FatRightArrow)?;
                 let return_type = parse_expression(lexer)?;
-                let body = if lexer.peek_token()?.kind == TokenKind::ExternDirective {
-                    expect_token(lexer, TokenKind::ExternDirective)?;
-                    let extern_name = expect_token(lexer, TokenKind::String)?
-                        .data
-                        .into_string()
-                        .unwrap();
-                    AstProcedureBody::ExternName(extern_name)
-                } else {
-                    AstProcedureBody::Scope(parse_scope(lexer)?)
-                };
+                let (body, body_location) =
+                    if lexer.peek_token()?.kind == TokenKind::ExternDirective {
+                        let extern_token = expect_token(lexer, TokenKind::ExternDirective)?;
+                        let extern_name_token = expect_token(lexer, TokenKind::String)?;
+                        (
+                            AstProcedureBody::ExternName(
+                                extern_name_token.data.as_string().unwrap().clone(),
+                            ),
+                            SourceSpan::combine_spans(
+                                &extern_token.location,
+                                &extern_name_token.location,
+                            ),
+                        )
+                    } else {
+                        let scope = parse_scope(lexer)?;
+                        (
+                            AstProcedureBody::Scope(scope.clone()),
+                            scope.location.clone(),
+                        )
+                    };
                 Ast::Procedure(
                     AstProcedure {
                         resolving: false.into(),
                         resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(&proc_token.location, &body_location),
                         name,
                         parameters,
                         return_type,
@@ -166,7 +200,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
         TokenKind::OpenBrace => Ast::Scope(parse_scope(lexer)?),
 
         TokenKind::ReturnKeyword => {
-            expect_token(lexer, TokenKind::ReturnKeyword)?;
+            let return_keyword = expect_token(lexer, TokenKind::ReturnKeyword)?;
             let value = if !matches!(
                 lexer.peek_token()?.kind,
                 TokenKind::Newline
@@ -182,6 +216,15 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 AstReturn {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    location: value
+                        .as_ref()
+                        .map(|value| {
+                            SourceSpan::combine_spans(
+                                &return_keyword.location,
+                                &value.get_location(),
+                            )
+                        })
+                        .unwrap_or_else(|| return_keyword.location.clone()),
                     value,
                 }
                 .into(),
@@ -189,7 +232,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
         }
 
         TokenKind::IfKeyword => {
-            expect_token(lexer, TokenKind::IfKeyword)?;
+            let if_token = expect_token(lexer, TokenKind::IfKeyword)?;
             let condition = parse_expression(lexer)?;
             let then_expression = parse_expression(lexer)?;
             let else_expression = if lexer.peek_token()?.kind == TokenKind::ElseKeyword {
@@ -202,6 +245,13 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 AstIf {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    location: SourceSpan::combine_spans(
+                        &if_token.location,
+                        &else_expression
+                            .as_ref()
+                            .map(|else_expression| else_expression.get_location())
+                            .unwrap_or_else(|| then_expression.get_location()),
+                    ),
                     condition,
                     then_expression,
                     else_expression,
@@ -211,13 +261,17 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
         }
 
         TokenKind::WhileKeyword => {
-            expect_token(lexer, TokenKind::WhileKeyword)?;
+            let while_token = expect_token(lexer, TokenKind::WhileKeyword)?;
             let condition = parse_expression(lexer)?;
             let then_expression = parse_expression(lexer)?;
             Ast::While(
                 AstWhile {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    location: SourceSpan::combine_spans(
+                        &while_token.location,
+                        &then_expression.get_location(),
+                    ),
                     condition,
                     then_expression,
                 }
@@ -233,7 +287,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
 }
 
 fn parse_scope(lexer: &mut Lexer) -> Result<Rc<AstScope>, ParsingError> {
-    expect_token(lexer, TokenKind::OpenBrace)?;
+    let open_brace_token = expect_token(lexer, TokenKind::OpenBrace)?;
     let mut expressions = vec![];
     loop {
         allow_newlines(lexer)?;
@@ -243,10 +297,14 @@ fn parse_scope(lexer: &mut Lexer) -> Result<Rc<AstScope>, ParsingError> {
         expressions.push(parse_expression(lexer)?);
         expect_newline(lexer)?;
     }
-    expect_token(lexer, TokenKind::CloseBrace)?;
+    let close_brace_token = expect_token(lexer, TokenKind::CloseBrace)?;
     Ok(AstScope {
         resolving: false.into(),
         resolved_type: None.into(),
+        location: SourceSpan::combine_spans(
+            &open_brace_token.location,
+            &close_brace_token.location,
+        ),
         expressions,
     }
     .into())
@@ -275,7 +333,7 @@ fn parse_binary_expression(
     }
 
     let mut left = if lexer.peek_token()?.kind == TokenKind::CastKeyword {
-        expect_token(lexer, TokenKind::CastKeyword)?;
+        let cast_token = expect_token(lexer, TokenKind::CastKeyword)?;
         expect_token(lexer, TokenKind::OpenParenthesis)?;
         let typ = parse_expression(lexer)?;
         expect_token(lexer, TokenKind::CloseParenthesis)?;
@@ -284,6 +342,7 @@ fn parse_binary_expression(
             AstCast {
                 resolving: false.into(),
                 resolved_type: None.into(),
+                location: SourceSpan::combine_spans(&cast_token.location, &operand.get_location()),
                 typ,
                 operand,
             }
@@ -308,11 +367,15 @@ fn parse_binary_expression(
                     arguments.push(parse_expression(lexer)?);
                     expect_comma_and_or_newline(lexer)?;
                 }
-                expect_token(lexer, TokenKind::CloseParenthesis)?;
+                let close_parenthesis_token = expect_token(lexer, TokenKind::CloseParenthesis)?;
                 Ast::Call(
                     AstCall {
                         resolving: false.into(),
                         resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &left.get_location(),
+                            &close_parenthesis_token.location,
+                        ),
                         operand: left,
                         arguments,
                     }
@@ -343,6 +406,10 @@ fn parse_binary_expression(
                     AstBinary {
                         resolving: false.into(),
                         resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &left.get_location(),
+                            &right.get_location(),
+                        ),
                         left,
                         operator,
                         right,

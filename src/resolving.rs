@@ -5,18 +5,30 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     Ast, AstBuiltin, AstLet, AstParameter, AstProcedure, AstProcedureBody, AstVar, BinaryOperator,
-    Type,
+    SourceSpan, Type,
 };
 
 #[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
 pub enum ResolvingError {
-    #[display(fmt = "Redeclaration of '{name}'")]
-    Redeclaration { name: String },
-    #[display(fmt = "'{name}' is undeclared")]
-    UndeclaredName { name: String },
-    #[display(fmt = "Expected type '{expected}', but got type '{got}'")]
-    ExpectedType { expected: Rc<Type>, got: Rc<Type> },
-    #[display(fmt = "'{}' does not return in all control paths", "procedure.name")]
+    #[display(fmt = "{new}: Redeclaration of '{name}', the original declaration was here: {old}")]
+    Redeclaration {
+        name: String,
+        new: SourceSpan,
+        old: SourceSpan,
+    },
+    #[display(fmt = "{location}: '{name}' is undeclared")]
+    UndeclaredName { name: String, location: SourceSpan },
+    #[display(fmt = "{location}: Expected type '{expected}', but got type '{got}'")]
+    ExpectedType {
+        expected: Rc<Type>,
+        got: Rc<Type>,
+        location: SourceSpan,
+    },
+    #[display(
+        fmt = "{}: '{}' does not return in all control paths",
+        "procedure.location",
+        "procedure.name"
+    )]
     ProcedureNoReturn { procedure: Rc<AstProcedure> },
 }
 
@@ -56,12 +68,14 @@ pub fn resolve_names(
         for expression in expressions {
             match expression {
                 Ast::Procedure(procedure) => {
-                    if let Some(_) = names.insert(
+                    if let Some(old) = names.insert(
                         procedure.name.clone(),
                         Declaration::Procedure(procedure.clone()),
                     ) {
                         return Err(ResolvingError::Redeclaration {
                             name: procedure.name.clone(),
+                            new: procedure.location.clone(),
+                            old: old.to_ast().get_location(),
                         });
                     }
                 }
@@ -77,22 +91,26 @@ pub fn resolve_names(
                 Ast::Parameter(_) => (),
                 Ast::Scope(_) => (),
                 Ast::LetDeclaration(declaration) => {
-                    if let Some(_) = names.insert(
+                    if let Some(old) = names.insert(
                         declaration.name.clone(),
                         Declaration::Let(declaration.clone()),
                     ) {
                         return Err(ResolvingError::Redeclaration {
                             name: declaration.name.clone(),
+                            new: declaration.location.clone(),
+                            old: old.to_ast().get_location(),
                         });
                     }
                 }
                 Ast::VarDeclaration(declaration) => {
-                    if let Some(_) = names.insert(
+                    if let Some(old) = names.insert(
                         declaration.name.clone(),
                         Declaration::Var(declaration.clone()),
                     ) {
                         return Err(ResolvingError::Redeclaration {
                             name: declaration.name.clone(),
+                            new: declaration.location.clone(),
+                            old: old.to_ast().get_location(),
                         });
                     }
                 }
@@ -116,12 +134,14 @@ pub fn resolve_names(
         }
         Ast::Procedure(procedure) => {
             if !names.contains_key(&procedure.name) {
-                if let Some(_) = names.insert(
+                if let Some(old) = names.insert(
                     procedure.name.clone(),
                     Declaration::Procedure(procedure.clone()),
                 ) {
                     return Err(ResolvingError::Redeclaration {
                         name: procedure.name.clone(),
+                        new: procedure.location.clone(),
+                        old: old.to_ast().get_location(),
                     });
                 }
             }
@@ -149,12 +169,14 @@ pub fn resolve_names(
         }
         Ast::Parameter(parameter) => {
             resolve_names(&parameter.typ, names)?;
-            if let Some(_) = names.insert(
+            if let Some(old) = names.insert(
                 parameter.name.clone(),
                 Declaration::Parameter(parameter.clone()),
             ) {
                 return Err(ResolvingError::Redeclaration {
                     name: parameter.name.clone(),
+                    new: parameter.location.clone(),
+                    old: old.to_ast().get_location(),
                 });
             }
         }
@@ -166,12 +188,14 @@ pub fn resolve_names(
                 resolve_names(typ, names)?;
             }
             resolve_names(&declaration.value, names)?;
-            if let Some(_) = names.insert(
+            if let Some(old) = names.insert(
                 declaration.name.clone(),
                 Declaration::Let(declaration.clone()),
             ) {
                 return Err(ResolvingError::Redeclaration {
                     name: declaration.name.clone(),
+                    new: declaration.location.clone(),
+                    old: old.to_ast().get_location(),
                 });
             }
         }
@@ -180,12 +204,14 @@ pub fn resolve_names(
                 resolve_names(typ, names)?;
             }
             resolve_names(&declaration.value, names)?;
-            if let Some(_) = names.insert(
+            if let Some(old) = names.insert(
                 declaration.name.clone(),
                 Declaration::Var(declaration.clone()),
             ) {
                 return Err(ResolvingError::Redeclaration {
                     name: declaration.name.clone(),
+                    new: declaration.location.clone(),
+                    old: old.to_ast().get_location(),
                 });
             }
         }
@@ -196,6 +222,7 @@ pub fn resolve_names(
                 } else {
                     return Err(ResolvingError::UndeclaredName {
                         name: name.name.clone(),
+                        location: name.location.clone(),
                     });
                 };
                 *name.resolved_declaration.borrow_mut() = Some(decl.to_ast());
@@ -241,13 +268,18 @@ pub fn resolve_names(
     })
 }
 
-fn expect_type(typ: &Rc<Type>, expected: &Rc<Type>) -> Result<(), ResolvingError> {
+fn expect_type(
+    typ: &Rc<Type>,
+    expected: &Rc<Type>,
+    location: SourceSpan,
+) -> Result<(), ResolvingError> {
     if typ == expected {
         Ok(())
     } else {
         Err(ResolvingError::ExpectedType {
             expected: expected.clone(),
             got: typ.clone(),
+            location,
         })
     }
 }
@@ -331,7 +363,11 @@ pub fn resolve(
                     defered_asts,
                     &None,
                 )?;
-                expect_type(&return_type_type, &Type::Type.into())?;
+                expect_type(
+                    &return_type_type,
+                    &Type::Type.into(),
+                    procedure.return_type.get_location(),
+                )?;
                 let return_type = eval_type(&procedure.return_type)?;
                 *procedure.resolved_type.borrow_mut() = Some(
                     Type::Procedure {
@@ -402,12 +438,16 @@ pub fn resolve(
                     defered_asts,
                     &None,
                 )?;
-                expect_type(&return_type_type, &Type::Type.into())?;
+                expect_type(
+                    &return_type_type,
+                    &Type::Type.into(),
+                    procedure_type.return_type.get_location(),
+                )?;
             }
             Ast::Parameter(parameter) => {
                 let type_type =
                     resolve(&parameter.typ, Some(Type::Type.into()), defered_asts, &None)?;
-                expect_type(&type_type, &Type::Type.into())?;
+                expect_type(&type_type, &Type::Type.into(), parameter.typ.get_location())?;
                 *parameter.resolved_type.borrow_mut() = Some(eval_type(&parameter.typ)?);
             }
             Ast::Scope(scope) => {
@@ -419,7 +459,7 @@ pub fn resolve(
             Ast::LetDeclaration(declaration) => {
                 let suggested_type = if let Some(typ) = &declaration.typ {
                     let type_type = resolve(typ, Some(Type::Type.into()), defered_asts, &None)?;
-                    expect_type(&type_type, &Type::Type.into())?;
+                    expect_type(&type_type, &Type::Type.into(), typ.get_location())?;
                     let resolved_type = eval_type(typ)?;
                     *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
                     Some(resolved_type)
@@ -435,13 +475,13 @@ pub fn resolve(
                 if declaration.resolved_type.borrow().is_none() {
                     *declaration.resolved_type.borrow_mut() = Some(value_type);
                 } else {
-                    expect_type(&value_type, &value_type)?;
+                    expect_type(&value_type, &value_type, declaration.value.get_location())?;
                 }
             }
             Ast::VarDeclaration(declaration) => {
                 let suggested_type = if let Some(typ) = &declaration.typ {
                     let type_type = resolve(typ, Some(Type::Type.into()), defered_asts, &None)?;
-                    expect_type(&type_type, &Type::Type.into())?;
+                    expect_type(&type_type, &Type::Type.into(), typ.get_location())?;
                     let resolved_type = eval_type(typ)?;
                     *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
                     Some(resolved_type)
@@ -457,7 +497,7 @@ pub fn resolve(
                 if declaration.resolved_type.borrow().is_none() {
                     *declaration.resolved_type.borrow_mut() = Some(value_type);
                 } else {
-                    expect_type(&value_type, &value_type)?;
+                    expect_type(&value_type, &value_type, declaration.value.get_location())?;
                 }
             }
             Ast::Name(name) => {
@@ -507,7 +547,11 @@ pub fn resolve(
                         defered_asts,
                         parent_procedure,
                     )?;
-                    expect_type(&argument_type, expected_argument_type)?;
+                    expect_type(
+                        &argument_type,
+                        expected_argument_type,
+                        argument.get_location(),
+                    )?;
                 }
             }
             Ast::Return(returnn) => {
@@ -531,9 +575,9 @@ pub fn resolve(
                         defered_asts,
                         parent_procedure,
                     )?;
-                    expect_type(&value_type, &return_type)?;
+                    expect_type(&value_type, &return_type, value.get_location())?;
                 } else {
-                    expect_type(&Type::Void.into(), &return_type)?;
+                    expect_type(&Type::Void.into(), &return_type, returnn.location.clone())?;
                 }
             }
             Ast::Binary(binary) => {
@@ -557,11 +601,11 @@ pub fn resolve(
                         if left_type.as_integer().is_none() {
                             todo!()
                         }
-                        expect_type(&right_type, &left_type)?;
+                        expect_type(&right_type, &left_type, binary.location.clone())?;
                         *binary.resolved_type.borrow_mut() = Some(left_type);
                     }
                     BinaryOperator::Equal | BinaryOperator::NotEqual => {
-                        expect_type(&right_type, &left_type)?;
+                        expect_type(&right_type, &left_type, binary.location.clone())?;
                         *binary.resolved_type.borrow_mut() = Some(Type::Bool.into());
                     }
                     BinaryOperator::LessThan
@@ -571,7 +615,7 @@ pub fn resolve(
                         if left_type.as_integer().is_none() {
                             todo!()
                         }
-                        expect_type(&right_type, &left_type)?;
+                        expect_type(&right_type, &left_type, binary.location.clone())?;
                         *binary.resolved_type.borrow_mut() = Some(Type::Bool.into());
                     }
                 }
@@ -583,7 +627,11 @@ pub fn resolve(
                     defered_asts,
                     parent_procedure,
                 )?;
-                expect_type(&condition_type, &Type::Bool.into())?;
+                expect_type(
+                    &condition_type,
+                    &Type::Bool.into(),
+                    iff.condition.get_location(),
+                )?;
                 let then_type = resolve(
                     &iff.then_expression,
                     suggested_type.clone(),
@@ -597,9 +645,13 @@ pub fn resolve(
                         defered_asts,
                         parent_procedure,
                     )?;
-                    expect_type(&else_type, &then_type)?;
+                    expect_type(&else_type, &then_type, else_expression.get_location())?;
                 } else {
-                    expect_type(&then_type, &Type::Void.into())?;
+                    expect_type(
+                        &then_type,
+                        &Type::Void.into(),
+                        iff.then_expression.get_location(),
+                    )?;
                 }
                 *iff.resolved_type.borrow_mut() = Some(then_type);
             }
@@ -610,14 +662,22 @@ pub fn resolve(
                     defered_asts,
                     parent_procedure,
                 )?;
-                expect_type(&condition_type, &Type::Bool.into())?;
+                expect_type(
+                    &condition_type,
+                    &Type::Bool.into(),
+                    whilee.condition.get_location(),
+                )?;
                 let then_type = resolve(
                     &whilee.then_expression,
                     suggested_type.clone(),
                     defered_asts,
                     parent_procedure,
                 )?;
-                expect_type(&then_type, &Type::Void.into())?;
+                expect_type(
+                    &then_type,
+                    &Type::Void.into(),
+                    whilee.then_expression.get_location(),
+                )?;
                 *whilee.resolved_type.borrow_mut() = Some(then_type);
             }
             Ast::Cast(cast) => {
@@ -627,7 +687,7 @@ pub fn resolve(
                     defered_asts,
                     parent_procedure,
                 )?;
-                expect_type(&type_type, &Type::Type.into())?;
+                expect_type(&type_type, &Type::Type.into(), cast.typ.get_location())?;
                 let typ = eval_type(&cast.typ)?;
                 let operand_type = resolve(
                     &cast.operand,

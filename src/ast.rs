@@ -7,7 +7,7 @@ use std::{
 use derive_more::IsVariant;
 use enum_as_inner::EnumAsInner;
 
-use crate::Type;
+use crate::{SourceLocation, SourceSpan, Type};
 
 #[derive(Clone, Debug, IsVariant, EnumAsInner)]
 pub enum Ast {
@@ -119,6 +119,39 @@ impl Ast {
         }
     }
 
+    pub fn get_location(&self) -> SourceSpan {
+        match self {
+            Ast::File(file) => file.location.clone(),
+            Ast::Procedure(procedure) => procedure.location.clone(),
+            Ast::ProcedureType(procedure_type) => procedure_type.location.clone(),
+            Ast::Parameter(parameter) => parameter.location.clone(),
+            Ast::Scope(scope) => scope.location.clone(),
+            Ast::LetDeclaration(declaration) => declaration.location.clone(),
+            Ast::VarDeclaration(declaration) => declaration.location.clone(),
+            Ast::Name(name) => name.location.clone(),
+            Ast::Integer(integer) => integer.location.clone(),
+            Ast::Call(call) => call.location.clone(),
+            Ast::Return(returnn) => returnn.location.clone(),
+            Ast::Binary(binary) => binary.location.clone(),
+            Ast::If(iff) => iff.location.clone(),
+            Ast::While(whilee) => whilee.location.clone(),
+            Ast::Cast(cast) => cast.location.clone(),
+            Ast::Builtin(_) => SourceSpan {
+                filepath: "builtin.lang".into(),
+                start: SourceLocation {
+                    position: 0,
+                    line: 1,
+                    column: 1,
+                },
+                end: SourceLocation {
+                    position: 0,
+                    line: 1,
+                    column: 1,
+                },
+            },
+        }
+    }
+
     pub(crate) fn get_ptr(&self) -> *const c_void {
         match self {
             Ast::File(file) => Rc::as_ptr(file) as *const _,
@@ -147,6 +180,7 @@ type ResolvedType = RefCell<Option<Rc<Type>>>;
 pub struct AstFile {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub expressions: Vec<Ast>,
 }
 
@@ -154,6 +188,7 @@ pub struct AstFile {
 pub struct AstProcedure {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub name: String,
     pub parameters: Vec<Rc<AstParameter>>,
     pub return_type: Ast,
@@ -164,6 +199,7 @@ pub struct AstProcedure {
 pub struct AstProcedureType {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub parameter_types: Vec<Ast>,
     pub return_type: Ast,
 }
@@ -172,6 +208,7 @@ pub struct AstProcedureType {
 pub struct AstParameter {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub name: String,
     pub typ: Ast,
 }
@@ -186,6 +223,7 @@ pub enum AstProcedureBody {
 pub struct AstScope {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub expressions: Vec<Ast>,
 }
 
@@ -193,6 +231,7 @@ pub struct AstScope {
 pub struct AstLet {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub name: String,
     pub typ: Option<Ast>,
     pub value: Ast,
@@ -202,6 +241,7 @@ pub struct AstLet {
 pub struct AstVar {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub name: String,
     pub typ: Option<Ast>,
     pub value: Ast,
@@ -210,6 +250,7 @@ pub struct AstVar {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AstName {
     pub resolving: Cell<bool>,
+    pub location: SourceSpan,
     pub name: String,
     pub resolved_declaration: RefCell<Option<Ast>>,
 }
@@ -218,6 +259,7 @@ pub struct AstName {
 pub struct AstInteger {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub value: u128,
 }
 
@@ -225,6 +267,7 @@ pub struct AstInteger {
 pub struct AstCall {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub operand: Ast,
     pub arguments: Vec<Ast>,
 }
@@ -233,6 +276,7 @@ pub struct AstCall {
 pub struct AstReturn {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub value: Option<Ast>,
 }
 
@@ -254,6 +298,7 @@ pub enum BinaryOperator {
 pub struct AstBinary {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub left: Ast,
     pub operator: BinaryOperator,
     pub right: Ast,
@@ -263,6 +308,7 @@ pub struct AstBinary {
 pub struct AstIf {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub condition: Ast,
     pub then_expression: Ast,
     pub else_expression: Option<Ast>,
@@ -272,6 +318,7 @@ pub struct AstIf {
 pub struct AstWhile {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub condition: Ast,
     pub then_expression: Ast,
 }
@@ -280,6 +327,7 @@ pub struct AstWhile {
 pub struct AstCast {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
     pub typ: Ast,
     pub operand: Ast,
 }
