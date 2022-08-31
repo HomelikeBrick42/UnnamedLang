@@ -102,6 +102,7 @@ pub fn resolve_names(
                 Ast::Return(_) => (),
                 Ast::Binary(_) => (),
                 Ast::If(_) => (),
+                Ast::While(_) => (),
                 Ast::Cast(_) => (),
                 Ast::Builtin(_) => (),
             }
@@ -223,6 +224,10 @@ pub fn resolve_names(
                 resolve_names(else_expression, names)?;
             }
         }
+        Ast::While(whilee) => {
+            resolve_names(&whilee.condition, names)?;
+            resolve_names(&whilee.then_expression, names)?;
+        }
         Ast::Cast(cast) => {
             resolve_names(&cast.typ, names)?;
             resolve_names(&cast.operand, names)?;
@@ -270,6 +275,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Return(_) => todo!(),
         Ast::Binary(_) => todo!(),
         Ast::If(_) => todo!(),
+        Ast::While(_) => todo!(),
         Ast::Cast(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
@@ -356,13 +362,21 @@ pub fn resolve(
                                 Ast::Binary(binary) => {
                                     does_return(&binary.left) || does_return(&binary.right)
                                 }
-                                Ast::If(iff) => iff
-                                    .else_expression
-                                    .as_ref()
-                                    .map(|elsee| {
-                                        does_return(&iff.then_expression) && does_return(elsee)
-                                    })
-                                    .unwrap_or(false),
+                                Ast::If(iff) => {
+                                    does_return(&iff.condition)
+                                        || iff
+                                            .else_expression
+                                            .as_ref()
+                                            .map(|elsee| {
+                                                does_return(&iff.then_expression)
+                                                    && does_return(elsee)
+                                            })
+                                            .unwrap_or(false)
+                                }
+                                Ast::While(whilee) => {
+                                    does_return(&whilee.condition)
+                                        || does_return(&whilee.then_expression)
+                                }
                                 Ast::Cast(cast) => does_return(&cast.operand),
                                 Ast::Builtin(_) => false,
                             }
@@ -588,6 +602,23 @@ pub fn resolve(
                     expect_type(&then_type, &Type::Void.into())?;
                 }
                 *iff.resolved_type.borrow_mut() = Some(then_type);
+            }
+            Ast::While(whilee) => {
+                let condition_type = resolve(
+                    &whilee.condition,
+                    Some(Type::Bool.into()),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                expect_type(&condition_type, &Type::Bool.into())?;
+                let then_type = resolve(
+                    &whilee.then_expression,
+                    suggested_type.clone(),
+                    defered_asts,
+                    parent_procedure,
+                )?;
+                expect_type(&then_type, &Type::Void.into())?;
+                *whilee.resolved_type.borrow_mut() = Some(then_type);
             }
             Ast::Cast(cast) => {
                 let type_type = resolve(

@@ -31,6 +31,10 @@ proc loop() => void {
 
 // loop()
 
+while 0 != 0 {
+    print_char(65)
+}
+
 proc print_s64(value: s64) => void #extern \"print_s64\"
 proc print_u64(value: u64) => void #extern \"print_u64\"
 

@@ -5,8 +5,8 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstName, AstParameter,
-    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, BinaryOperator, Lexer,
-    LexerError, Token, TokenKind,
+    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, AstWhile,
+    BinaryOperator, Lexer, LexerError, Token, TokenKind,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -205,6 +205,21 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     condition,
                     then_expression,
                     else_expression,
+                }
+                .into(),
+            )
+        }
+
+        TokenKind::WhileKeyword => {
+            expect_token(lexer, TokenKind::WhileKeyword)?;
+            let condition = parse_expression(lexer)?;
+            let then_expression = parse_expression(lexer)?;
+            Ast::While(
+                AstWhile {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    condition,
+                    then_expression,
                 }
                 .into(),
             )

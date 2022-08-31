@@ -216,6 +216,10 @@ pub fn emit(
                                     get_all_procedures(else_expression, procedures, walked);
                                 }
                             }
+                            Ast::While(whilee) => {
+                                get_all_procedures(&whilee.condition, procedures, walked);
+                                get_all_procedures(&whilee.then_expression, procedures, walked);
+                            }
                             Ast::Cast(cast) => {
                                 get_all_procedures(&cast.typ, procedures, walked);
                                 get_all_procedures(&cast.operand, procedures, walked);
@@ -514,7 +518,8 @@ pub fn emit(
             let id = *next_id;
             *next_id += 1;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
-            write!(stream, ";\n")?;
+            assert!(typ.is_void());
+            write!(stream, " = &(Void){{}};\n")?;
             write!(
                 stream,
                 "if (!*{PREFIX}{condition}) goto {PREFIX}{else_id};\n"
@@ -529,6 +534,30 @@ pub fn emit(
                 let else_expression = emit(else_expression, next_id, stream)?;
                 write!(stream, "{PREFIX}{id} = {PREFIX}{else_expression};\n")?;
             }
+            write!(stream, "{PREFIX}{end_id}:;\n")?;
+            id
+        }
+        Ast::While(whilee) => {
+            let typ = whilee.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            let start_id = *next_id;
+            *next_id += 1;
+            write!(stream, "{PREFIX}{start_id}:;\n")?;
+            let condition = emit(&whilee.condition, next_id, stream)?;
+            let id = *next_id;
+            *next_id += 1;
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            assert!(typ.is_void());
+            write!(stream, " = &(Void){{}};\n")?;
+            let end_id = *next_id;
+            *next_id += 1;
+            write!(
+                stream,
+                "if (!*{PREFIX}{condition}) goto {PREFIX}{end_id};\n"
+            )?;
+            let then_expression = emit(&whilee.then_expression, next_id, stream)?;
+            write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
+            write!(stream, "goto {PREFIX}{start_id};\n")?;
             write!(stream, "{PREFIX}{end_id}:;\n")?;
             id
         }
