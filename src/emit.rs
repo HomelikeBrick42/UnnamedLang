@@ -352,17 +352,6 @@ pub fn emit(
                 }
                 write!(stream, "return 0;\n")?;
                 write!(stream, "}}\n")?;
-                write!(stream, "\n")?;
-                write!(stream, "Void print_s64(s64 value) {{\n")?;
-                write!(stream, "extern int printf(const char *, ...);\n")?;
-                write!(stream, "printf(\"%lld\\n\", value);\n")?;
-                write!(stream, "return (Void){{}};\n")?;
-                write!(stream, "}}\n")?;
-                write!(stream, "Void print_u64(u64 value) {{\n")?;
-                write!(stream, "extern int printf(const char *, ...);\n")?;
-                write!(stream, "printf(\"%llu\\n\", value);\n")?;
-                write!(stream, "return (Void){{}};\n")?;
-                write!(stream, "}}\n")?;
             }
             usize::MAX
         }
