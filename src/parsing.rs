@@ -296,7 +296,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             } else {
                 None
             };
-            expect_token(lexer, TokenKind::LeftArrow)?;
+            expect_token(lexer, TokenKind::Equal)?;
             let value = parse_expression(lexer)?;
             Ast::LetDeclaration(
                 AstLet {
@@ -379,7 +379,7 @@ fn parse_binary_expression(
 
     fn get_binary_precedence(kind: TokenKind) -> usize {
         match kind {
-            TokenKind::Asterisk | TokenKind::Slash => 3,
+            TokenKind::Asterisk | TokenKind::Slash | TokenKind::Percent => 3,
             TokenKind::Plus | TokenKind::Minus => 2,
             TokenKind::EqualEqual
             | TokenKind::ExclamationMarkEqual
@@ -492,6 +492,7 @@ fn parse_binary_expression(
                     TokenKind::Minus => BinaryOperator::Subtract,
                     TokenKind::Asterisk => BinaryOperator::Multiply,
                     TokenKind::Slash => BinaryOperator::Divide,
+                    TokenKind::Percent => BinaryOperator::Remainder,
                     TokenKind::EqualEqual => BinaryOperator::Equal,
                     TokenKind::ExclamationMarkEqual => BinaryOperator::NotEqual,
                     TokenKind::LessThan => BinaryOperator::LessThan,

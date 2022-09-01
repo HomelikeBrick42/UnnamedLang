@@ -43,6 +43,8 @@ pub enum TokenKind {
     Asterisk,
     #[display(fmt = "/")]
     Slash,
+    #[display(fmt = "%")]
+    Percent,
     #[display(fmt = "==")]
     EqualEqual,
     #[display(fmt = "!=")]

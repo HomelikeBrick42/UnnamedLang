@@ -419,7 +419,7 @@ pub fn emit(
             *next_id += 1;
             let name = format!("_{}_{}", Rc::as_ptr(declaration) as usize, declaration.name);
             emit_type(&typ, name.clone().into(), stream)?;
-            write!(stream, " = {PREFIX}{value};\n")?;
+            write!(stream, " = *{PREFIX}{value};\n")?;
             emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = &{name};\n")?;
             id
@@ -529,6 +529,7 @@ pub fn emit(
                 BinaryOperator::Subtract => write!(stream, "*{PREFIX}{left} - *{PREFIX}{right}")?,
                 BinaryOperator::Multiply => write!(stream, "*{PREFIX}{left} * *{PREFIX}{right}")?,
                 BinaryOperator::Divide => write!(stream, "*{PREFIX}{left} / *{PREFIX}{right}")?,
+                BinaryOperator::Remainder => write!(stream, "*{PREFIX}{left} % *{PREFIX}{right}")?,
                 BinaryOperator::Equal => write!(stream, "*{PREFIX}{left} == *{PREFIX}{right}")?,
                 BinaryOperator::NotEqual => write!(stream, "*{PREFIX}{left} != *{PREFIX}{right}")?,
                 BinaryOperator::LessThan => write!(stream, "*{PREFIX}{left} < *{PREFIX}{right}")?,

@@ -57,6 +57,7 @@ static SINGLE_CHAR_TOKENS: phf::Map<char, TokenKind> = phf_map! {
     '-' => TokenKind::Minus,
     '*' => TokenKind::Asterisk,
     '/' => TokenKind::Slash,
+    '%' => TokenKind::Percent,
     '<' => TokenKind::LessThan,
     '>' => TokenKind::GreaterThan,
 };

@@ -636,7 +636,8 @@ pub fn resolve(
                     BinaryOperator::Add
                     | BinaryOperator::Subtract
                     | BinaryOperator::Multiply
-                    | BinaryOperator::Divide => {
+                    | BinaryOperator::Divide
+                    | BinaryOperator::Remainder => {
                         if left_type.as_integer().is_none() {
                             todo!()
                         }
