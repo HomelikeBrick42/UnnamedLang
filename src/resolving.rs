@@ -4,8 +4,8 @@ use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstBuiltin, AstLet, AstParameter, AstProcedure, AstProcedureBody, AstVar, BinaryOperator,
-    SourceSpan, Type,
+    Ast, AstAssignDirection, AstBuiltin, AstLet, AstParameter, AstProcedure, AstProcedureBody,
+    AstVar, BinaryOperator, SourceSpan, Type,
 };
 
 #[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
@@ -30,6 +30,8 @@ pub enum ResolvingError {
         "procedure.name"
     )]
     ProcedureNoReturn { procedure: Rc<AstProcedure> },
+    #[display(fmt = "{location}: Operand is not assignable")]
+    NotAssignable { location: SourceSpan },
 }
 
 #[derive(Clone, Debug, PartialEq, IsVariant, EnumAsInner)]
@@ -54,6 +56,28 @@ impl Declaration {
             Declaration::Var(declaration) => Ast::VarDeclaration(declaration.clone()),
             Declaration::Builtin(builtin) => Ast::Builtin(builtin.clone()),
         }
+    }
+}
+
+fn is_assignable(ast: &Ast) -> bool {
+    match ast {
+        Ast::File(_) => false,
+        Ast::Procedure(_) => false,
+        Ast::ProcedureType(_) => false,
+        Ast::Parameter(_) => false,
+        Ast::Scope(_) => false,
+        Ast::LetDeclaration(_) => false,
+        Ast::VarDeclaration(_) => true,
+        Ast::Name(name) => is_assignable(name.resolved_declaration.borrow().as_ref().unwrap()),
+        Ast::Integer(_) => false,
+        Ast::Call(_) => false,
+        Ast::Return(_) => false,
+        Ast::Binary(_) => false,
+        Ast::If(_) => false,
+        Ast::While(_) => false,
+        Ast::Cast(_) => false,
+        Ast::Assign(_) => false,
+        Ast::Builtin(_) => false,
     }
 }
 
@@ -122,6 +146,7 @@ pub fn resolve_names(
                 Ast::If(_) => (),
                 Ast::While(_) => (),
                 Ast::Cast(_) => (),
+                Ast::Assign(_) => (),
                 Ast::Builtin(_) => (),
             }
         }
@@ -259,6 +284,16 @@ pub fn resolve_names(
             resolve_names(&cast.typ, names)?;
             resolve_names(&cast.operand, names)?;
         }
+        Ast::Assign(assign) => match &assign.direction {
+            AstAssignDirection::Left => {
+                resolve_names(&assign.operand, names)?;
+                resolve_names(&assign.value, names)?;
+            }
+            AstAssignDirection::Right => {
+                resolve_names(&assign.value, names)?;
+                resolve_names(&assign.operand, names)?;
+            }
+        },
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => (),
             AstBuiltin::Void => (),
@@ -309,6 +344,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::If(_) => todo!(),
         Ast::While(_) => todo!(),
         Ast::Cast(_) => todo!(),
+        Ast::Assign(_) => todo!(),
         Ast::Builtin(builtin) => match builtin.as_ref() {
             AstBuiltin::Type => Type::Type.into(),
             AstBuiltin::Void => Type::Void.into(),
@@ -412,6 +448,9 @@ pub fn resolve(
                                 Ast::While(whilee) => {
                                     does_return(&whilee.condition)
                                         || does_return(&whilee.then_expression)
+                                }
+                                Ast::Assign(assign) => {
+                                    does_return(&assign.operand) || does_return(&assign.value)
                                 }
                                 Ast::Cast(cast) => does_return(&cast.operand),
                                 Ast::Builtin(_) => false,
@@ -701,6 +740,47 @@ pub fn resolve(
                     todo!()
                 }
                 *cast.resolved_type.borrow_mut() = Some(typ);
+            }
+            Ast::Assign(assign) => {
+                let (operand_type, value_type) = match &assign.direction {
+                    AstAssignDirection::Left => {
+                        let operand_type = resolve(
+                            &assign.operand,
+                            suggested_type,
+                            defered_asts,
+                            parent_procedure,
+                        )?;
+                        let value_type = resolve(
+                            &assign.value,
+                            operand_type.clone().into(),
+                            defered_asts,
+                            parent_procedure,
+                        )?;
+                        (operand_type, value_type)
+                    }
+                    AstAssignDirection::Right => {
+                        let value_type = resolve(
+                            &assign.value,
+                            suggested_type,
+                            defered_asts,
+                            parent_procedure,
+                        )?;
+                        let operand_type = resolve(
+                            &assign.operand,
+                            value_type.clone().into(),
+                            defered_asts,
+                            parent_procedure,
+                        )?;
+                        (operand_type, value_type)
+                    }
+                };
+                expect_type(&value_type, &operand_type, assign.value.get_location())?;
+                if !is_assignable(&assign.operand) {
+                    return Err(ResolvingError::NotAssignable {
+                        location: assign.operand.get_location(),
+                    });
+                }
+                *assign.resolved_type.borrow_mut() = Some(operand_type);
             }
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),

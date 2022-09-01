@@ -4,9 +4,10 @@ use derive_more::Display;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    Ast, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger, AstLet, AstName, AstParameter,
-    AstProcedure, AstProcedureBody, AstProcedureType, AstReturn, AstScope, AstVar, AstWhile,
-    BinaryOperator, Lexer, LexerError, SourceLocation, SourceSpan, Token, TokenKind,
+    Ast, AstAssign, AstAssignDirection, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger,
+    AstLet, AstName, AstParameter, AstProcedure, AstProcedureBody, AstProcedureType, AstReturn,
+    AstScope, AstVar, AstWhile, BinaryOperator, Lexer, LexerError, SourceLocation, SourceSpan,
+    Token, TokenKind,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -70,6 +71,10 @@ fn parse_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
     parse_binary_expression(lexer, 0)
 }
 
+fn parse_least_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
+    parse_binary_expression(lexer, usize::MAX)
+}
+
 fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
     Ok(match lexer.peek_token()?.kind {
         TokenKind::Name => {
@@ -118,7 +123,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 }
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
                 expect_token(lexer, TokenKind::FatRightArrow)?;
-                let return_type = parse_expression(lexer)?;
+                let return_type = parse_least_expression(lexer)?;
                 Ast::ProcedureType(
                     AstProcedureType {
                         resolving: false.into(),
@@ -143,7 +148,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 while lexer.peek_token()?.kind != TokenKind::CloseParenthesis {
                     let name_token = expect_token(lexer, TokenKind::Name)?;
                     expect_token(lexer, TokenKind::Colon)?;
-                    let typ = parse_expression(lexer)?;
+                    let typ = parse_least_expression(lexer)?;
                     parameters.push(
                         AstParameter {
                             resolving: false.into(),
@@ -161,7 +166,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 }
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
                 expect_token(lexer, TokenKind::FatRightArrow)?;
-                let return_type = parse_expression(lexer)?;
+                let return_type = parse_least_expression(lexer)?;
                 let (body, body_location) =
                     if lexer.peek_token()?.kind == TokenKind::ExternDirective {
                         let extern_token = expect_token(lexer, TokenKind::ExternDirective)?;
@@ -287,7 +292,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 .unwrap();
             let typ = if lexer.peek_token()?.kind == TokenKind::Colon {
                 expect_token(lexer, TokenKind::Colon)?;
-                Some(parse_expression(lexer)?)
+                Some(parse_least_expression(lexer)?)
             } else {
                 None
             };
@@ -314,7 +319,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 .unwrap();
             let typ = if lexer.peek_token()?.kind == TokenKind::Colon {
                 expect_token(lexer, TokenKind::Colon)?;
-                Some(parse_expression(lexer)?)
+                Some(parse_least_expression(lexer)?)
             } else {
                 None
             };
@@ -391,7 +396,7 @@ fn parse_binary_expression(
         expect_token(lexer, TokenKind::OpenParenthesis)?;
         let typ = parse_expression(lexer)?;
         expect_token(lexer, TokenKind::CloseParenthesis)?;
-        let operand = parse_binary_expression(lexer, usize::MAX)?;
+        let operand = parse_least_expression(lexer)?;
         Ast::Cast(
             AstCast {
                 resolving: false.into(),
@@ -432,6 +437,46 @@ fn parse_binary_expression(
                         ),
                         operand: left,
                         arguments,
+                    }
+                    .into(),
+                )
+            }
+
+            TokenKind::LeftArrow if parent_precedence == 0 => {
+                expect_token(lexer, TokenKind::LeftArrow)?;
+                allow_newline(lexer)?;
+                let value = parse_expression(lexer)?;
+                Ast::Assign(
+                    AstAssign {
+                        resolving: false.into(),
+                        resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &left.get_location(),
+                            &value.get_location(),
+                        ),
+                        direction: AstAssignDirection::Left,
+                        operand: left,
+                        value,
+                    }
+                    .into(),
+                )
+            }
+
+            TokenKind::RightArrow if parent_precedence == 0 => {
+                expect_token(lexer, TokenKind::RightArrow)?;
+                allow_newline(lexer)?;
+                let operand = parse_expression(lexer)?;
+                Ast::Assign(
+                    AstAssign {
+                        resolving: false.into(),
+                        resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &left.get_location(),
+                            &operand.get_location(),
+                        ),
+                        direction: AstAssignDirection::Right,
+                        operand,
+                        value: left,
                     }
                     .into(),
                 )

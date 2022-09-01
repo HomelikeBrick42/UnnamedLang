@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-use crate::{Ast, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator, Type};
+use crate::{
+    Ast, AstAssignDirection, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator, Type,
+};
 
 const PREFIX: &'static str = "_";
 
@@ -224,6 +226,16 @@ pub fn emit(
                                 get_all_procedures(&cast.typ, procedures, walked);
                                 get_all_procedures(&cast.operand, procedures, walked);
                             }
+                            Ast::Assign(assign) => match &assign.direction {
+                                AstAssignDirection::Left => {
+                                    get_all_procedures(&assign.operand, procedures, walked);
+                                    get_all_procedures(&assign.value, procedures, walked);
+                                }
+                                AstAssignDirection::Right => {
+                                    get_all_procedures(&assign.value, procedures, walked);
+                                    get_all_procedures(&assign.operand, procedures, walked);
+                                }
+                            },
                             Ast::Builtin(_) => (),
                         }
                     }
@@ -605,6 +617,20 @@ pub fn emit(
                 id
             }
         }
+        Ast::Assign(assign) => match &assign.direction {
+            AstAssignDirection::Left => {
+                let operand = emit(&assign.operand, next_id, stream)?;
+                let value = emit(&assign.value, next_id, stream)?;
+                write!(stream, "*{PREFIX}{operand} = *{PREFIX}{value};\n")?;
+                operand
+            }
+            AstAssignDirection::Right => {
+                let value = emit(&assign.value, next_id, stream)?;
+                let operand = emit(&assign.operand, next_id, stream)?;
+                write!(stream, "*{PREFIX}{operand} = *{PREFIX}{value};\n")?;
+                operand
+            }
+        },
         Ast::Builtin(_) => todo!(),
     })
 }

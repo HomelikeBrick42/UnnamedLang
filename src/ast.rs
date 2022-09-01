@@ -26,6 +26,7 @@ pub enum Ast {
     If(Rc<AstIf>),
     While(Rc<AstWhile>),
     Cast(Rc<AstCast>),
+    Assign(Rc<AstAssign>),
     Builtin(Rc<AstBuiltin>),
 }
 
@@ -58,6 +59,7 @@ impl Ast {
             Ast::If(iff) => iff.resolved_type.borrow().clone(),
             Ast::While(whilee) => whilee.resolved_type.borrow().clone(),
             Ast::Cast(cast) => cast.resolved_type.borrow().clone(),
+            Ast::Assign(assign) => assign.resolved_type.borrow().clone(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Bool
                 | AstBuiltin::Type
@@ -84,6 +86,7 @@ impl Ast {
             Ast::If(iff) => iff.resolving.set(value),
             Ast::While(whilee) => whilee.resolving.set(value),
             Ast::Cast(cast) => cast.resolving.set(value),
+            Ast::Assign(assign) => assign.resolving.set(value),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => (),
                 AstBuiltin::Void => (),
@@ -110,6 +113,7 @@ impl Ast {
             Ast::If(iff) => iff.resolving.get(),
             Ast::While(whilee) => whilee.resolving.get(),
             Ast::Cast(cast) => cast.resolving.get(),
+            Ast::Assign(assign) => assign.resolving.get(),
             Ast::Builtin(builtin) => match builtin.as_ref() {
                 AstBuiltin::Type => false,
                 AstBuiltin::Void => false,
@@ -136,6 +140,7 @@ impl Ast {
             Ast::If(iff) => iff.location.clone(),
             Ast::While(whilee) => whilee.location.clone(),
             Ast::Cast(cast) => cast.location.clone(),
+            Ast::Assign(assign) => assign.location.clone(),
             Ast::Builtin(_) => SourceSpan {
                 filepath: "builtin.lang".into(),
                 start: SourceLocation {
@@ -169,6 +174,7 @@ impl Ast {
             Ast::If(iff) => Rc::as_ptr(iff) as *const _,
             Ast::While(whilee) => Rc::as_ptr(whilee) as *const _,
             Ast::Cast(cast) => Rc::as_ptr(cast) as *const _,
+            Ast::Assign(assign) => Rc::as_ptr(assign) as *const _,
             Ast::Builtin(builtin) => Rc::as_ptr(builtin) as *const _,
         }
     }
@@ -330,6 +336,22 @@ pub struct AstCast {
     pub location: SourceSpan,
     pub typ: Ast,
     pub operand: Ast,
+}
+
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
+pub enum AstAssignDirection {
+    Left,
+    Right,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstAssign {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
+    pub direction: AstAssignDirection,
+    pub operand: Ast,
+    pub value: Ast,
 }
 
 #[derive(Clone, Debug, PartialEq)]
