@@ -561,7 +561,11 @@ pub fn resolve(
                 if declaration.resolved_type.borrow().is_none() {
                     *declaration.resolved_type.borrow_mut() = Some(value_type);
                 } else {
-                    expect_type(&value_type, &value_type, declaration.value.get_location())?;
+                    expect_type(
+                        &value_type,
+                        &declaration.resolved_type.borrow().as_ref().unwrap(),
+                        declaration.value.get_location(),
+                    )?;
                 }
             }
             Ast::VarDeclaration(declaration) => {
@@ -583,7 +587,11 @@ pub fn resolve(
                 if declaration.resolved_type.borrow().is_none() {
                     *declaration.resolved_type.borrow_mut() = Some(value_type);
                 } else {
-                    expect_type(&value_type, &value_type, declaration.value.get_location())?;
+                    expect_type(
+                        &value_type,
+                        &declaration.resolved_type.borrow().as_ref().unwrap(),
+                        declaration.value.get_location(),
+                    )?;
                 }
             }
             Ast::Name(name) => {
