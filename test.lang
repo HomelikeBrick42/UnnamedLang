@@ -1,3 +1,8 @@
+proc get_file_handle(id: u32) => ^void #extern "__acrt_iob_func"
+let stdin = get_file_handle(0)
+let stdout = get_file_handle(1)
+let stderr = get_file_handle(2)
+
 proc factorial(n: u64) => u64 {
     if n <= 1 {
         return 1
@@ -6,7 +11,7 @@ proc factorial(n: u64) => u64 {
     }
 }
 
-proc print_u64(value: u64) => void {
+proc print_u64(value: u64, handle: ^void) => void {
     var length <- 0
     {
         var copy <- value
@@ -29,25 +34,25 @@ proc print_u64(value: u64) => void {
             j <- j + 1
         }
         let digit = copy % 10 + 48
-        print_char(cast(s32) digit)
+        print_char(cast(s32) digit, handle)
         i <- i - 1
     }
 }
 
-print_u64(factorial(6))
-print_char(10)
+print_u64(factorial(6), stdout)
+print_char(10, stdout)
 
 proc change_value(ptr: ^u64, value: u64) => void {
-    ptr^ <- value
+    ptr^ <- value * 25
 }
 
 var foo: u64 <- 5
-print_u64(foo)
-print_char(10)
+print_u64(foo, stdout)
+print_char(10, stdout)
 
 change_value(&foo, 10)
-print_u64(foo)
-print_char(10)
+print_u64(foo, stdout)
+print_char(10, stdout)
 
-proc print_char(value: s32) => s32 #extern "putchar"
-proc input_char() => s32 #extern "getchar"
+proc print_char(value: s32, handle: ^void) => s32 #extern "fputc"
+proc input_char(handle: ^void) => s32 #extern "fgetc"
