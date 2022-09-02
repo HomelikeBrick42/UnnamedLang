@@ -35,6 +35,19 @@ proc print_u64(value: u64) => void {
 }
 
 print_u64(factorial(6))
+print_char(10)
+
+proc change_value(ptr: ^u64, value: u64) => void {
+    ptr^ <- value
+}
+
+var foo: u64 <- 5
+print_u64(foo)
+print_char(10)
+
+change_value(&foo, 10)
+print_u64(foo)
+print_char(10)
 
 proc print_char(value: s32) => s32 #extern "putchar"
 proc input_char() => s32 #extern "getchar"

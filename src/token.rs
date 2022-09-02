@@ -27,6 +27,10 @@ pub enum TokenKind {
     Colon,
     #[display(fmt = ",")]
     Comma,
+    #[display(fmt = "^")]
+    Caret,
+    #[display(fmt = "&")]
+    Ampersand,
     #[display(fmt = "=")]
     Equal,
     #[display(fmt = "<-")]

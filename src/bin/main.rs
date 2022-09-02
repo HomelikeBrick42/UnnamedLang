@@ -10,7 +10,7 @@ fn unwrap_error<T, E: Display>(result: Result<T, E>) -> T {
 }
 
 fn main() {
-    let filepath = "test.lang";
+    let filepath = "./test.lang";
     let file = unwrap_error(parse_file(
         filepath.into(),
         &std::fs::read_to_string(filepath).unwrap(),

@@ -5,7 +5,7 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     Ast, AstAssignDirection, AstBuiltin, AstLet, AstParameter, AstProcedure, AstProcedureBody,
-    AstVar, BinaryOperator, SourceSpan, Type,
+    AstVar, BinaryOperator, SourceSpan, Type, UnaryOperator,
 };
 
 #[derive(Clone, Debug, Display, PartialEq, IsVariant, EnumAsInner)]
@@ -72,11 +72,42 @@ fn is_assignable(ast: &Ast) -> bool {
         Ast::Integer(_) => false,
         Ast::Call(_) => false,
         Ast::Return(_) => false,
+        Ast::Unary(unary) => match &unary.operator {
+            UnaryOperator::Identity => false,
+            UnaryOperator::Negation => false,
+            UnaryOperator::LogicalNot => false,
+            UnaryOperator::PointerType => false,
+            UnaryOperator::AddressOf => false,
+            UnaryOperator::Dereference => true,
+        },
         Ast::Binary(_) => false,
         Ast::If(_) => false,
         Ast::While(_) => false,
         Ast::Cast(_) => false,
         Ast::Assign(_) => false,
+        Ast::Builtin(_) => false,
+    }
+}
+
+fn is_addressable(ast: &Ast) -> bool {
+    match ast {
+        Ast::File(_) => false,
+        Ast::Procedure(_) => false,
+        Ast::ProcedureType(_) => true,
+        Ast::Parameter(_) => false,
+        Ast::Scope(_) => true,
+        Ast::LetDeclaration(_) => false,
+        Ast::VarDeclaration(_) => true,
+        Ast::Name(name) => is_addressable(name.resolved_declaration.borrow().as_ref().unwrap()),
+        Ast::Integer(_) => true,
+        Ast::Call(_) => true,
+        Ast::Return(_) => false,
+        Ast::Unary(_) => true,
+        Ast::Binary(_) => true,
+        Ast::If(_) => true,
+        Ast::While(_) => true,
+        Ast::Cast(_) => true,
+        Ast::Assign(_) => true,
         Ast::Builtin(_) => false,
     }
 }
@@ -142,6 +173,7 @@ pub fn resolve_names(
                 Ast::Integer(_) => (),
                 Ast::Call(_) => (),
                 Ast::Return(_) => (),
+                Ast::Unary(_) => (),
                 Ast::Binary(_) => (),
                 Ast::If(_) => (),
                 Ast::While(_) => (),
@@ -265,6 +297,9 @@ pub fn resolve_names(
                 resolve_names(value, names)?;
             }
         }
+        Ast::Unary(unary) => {
+            resolve_names(&unary.operand, names)?;
+        }
         Ast::Binary(binary) => {
             resolve_names(&binary.left, names)?;
             resolve_names(&binary.right, names)?;
@@ -340,6 +375,17 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
         Ast::Integer(_) => todo!(),
         Ast::Call(_) => todo!(),
         Ast::Return(_) => todo!(),
+        Ast::Unary(unary) => match &unary.operator {
+            UnaryOperator::Identity => todo!(),
+            UnaryOperator::Negation => todo!(),
+            UnaryOperator::LogicalNot => todo!(),
+            UnaryOperator::PointerType => Type::Pointer {
+                pointed_to: eval_type(&unary.operand)?,
+            }
+            .into(),
+            UnaryOperator::AddressOf => todo!(),
+            UnaryOperator::Dereference => todo!(),
+        },
         Ast::Binary(_) => todo!(),
         Ast::If(_) => todo!(),
         Ast::While(_) => todo!(),
@@ -431,6 +477,7 @@ pub fn resolve(
                                         || call.arguments.iter().any(does_return)
                                 }
                                 Ast::Return(_) => true,
+                                Ast::Unary(unary) => does_return(&unary.operand),
                                 Ast::Binary(binary) => {
                                     does_return(&binary.left) || does_return(&binary.right)
                                 }
@@ -619,6 +666,91 @@ pub fn resolve(
                     expect_type(&Type::Void.into(), &return_type, returnn.location.clone())?;
                 }
             }
+            Ast::Unary(unary) => match &unary.operator {
+                UnaryOperator::Identity => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    if operand_type.as_integer().is_none() {
+                        todo!()
+                    }
+                    *unary.resolved_type.borrow_mut() = Some(operand_type);
+                }
+                UnaryOperator::Negation => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    if operand_type.as_integer().is_none() {
+                        todo!()
+                    }
+                    *unary.resolved_type.borrow_mut() = Some(operand_type);
+                }
+                UnaryOperator::LogicalNot => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    expect_type(
+                        &operand_type,
+                        &Type::Bool.into(),
+                        unary.operand.get_location(),
+                    )?;
+                    *unary.resolved_type.borrow_mut() = Some(Type::Bool.into());
+                }
+                UnaryOperator::PointerType => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    expect_type(
+                        &operand_type,
+                        &Type::Type.into(),
+                        unary.operand.get_location(),
+                    )?;
+                    *unary.resolved_type.borrow_mut() = Some(Type::Type.into());
+                }
+                UnaryOperator::AddressOf => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type,
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    if !is_addressable(&unary.operand) {
+                        todo!()
+                    }
+                    *unary.resolved_type.borrow_mut() = Some(
+                        Type::Pointer {
+                            pointed_to: operand_type,
+                        }
+                        .into(),
+                    );
+                }
+                UnaryOperator::Dereference => {
+                    let operand_type = resolve(
+                        &unary.operand,
+                        suggested_type.map(|typ| Type::Pointer { pointed_to: typ }.into()),
+                        defered_asts,
+                        parent_procedure,
+                    )?;
+                    let typ = if let Some(typ) = operand_type.as_pointer() {
+                        typ.clone()
+                    } else {
+                        todo!()
+                    };
+                    *unary.resolved_type.borrow_mut() = Some(typ);
+                }
+            },
             Ast::Binary(binary) => {
                 let left_type = resolve(
                     &binary.left,

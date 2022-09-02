@@ -52,6 +52,8 @@ static SINGLE_CHAR_TOKENS: phf::Map<char, TokenKind> = phf_map! {
     '}' => TokenKind::CloseBrace,
     ':' => TokenKind::Colon,
     ',' => TokenKind::Comma,
+    '^' => TokenKind::Caret,
+    '&' => TokenKind::Ampersand,
     '=' => TokenKind::Equal,
     '+' => TokenKind::Plus,
     '-' => TokenKind::Minus,

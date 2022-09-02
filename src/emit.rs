@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     Ast, AstAssignDirection, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator, Type,
+    UnaryOperator,
 };
 
 const PREFIX: &'static str = "_";
@@ -206,6 +207,9 @@ pub fn emit(
                                 if let Some(value) = &returnn.value {
                                     get_all_procedures(value, procedures, walked);
                                 }
+                            }
+                            Ast::Unary(unary) => {
+                                get_all_procedures(&unary.operand, procedures, walked);
                             }
                             Ast::Binary(binary) => {
                                 get_all_procedures(&binary.left, procedures, walked);
@@ -498,6 +502,44 @@ pub fn emit(
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
+            id
+        }
+        Ast::Unary(unary) => {
+            let typ = unary.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            let operand = emit(&unary.operand, next_id, stream)?;
+            let id = *next_id;
+            *next_id += 1;
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, " = ")?;
+            match &unary.operator {
+                UnaryOperator::Identity => {
+                    write!(stream, "&(")?;
+                    emit_type(typ, None, stream)?;
+                    write!(stream, "){{*{PREFIX}{operand}}};\n")?;
+                }
+                UnaryOperator::Negation => {
+                    write!(stream, "&(")?;
+                    emit_type(typ, None, stream)?;
+                    assert!(unary.operand.get_type().unwrap().as_integer().is_none());
+                    write!(stream, "){{-*{PREFIX}{operand}}};\n")?;
+                }
+                UnaryOperator::LogicalNot => {
+                    write!(stream, "&(")?;
+                    emit_type(typ, None, stream)?;
+                    assert!(unary.operand.get_type().unwrap().is_bool());
+                    write!(stream, "){{!*{PREFIX}{operand}}};\n")?;
+                }
+                UnaryOperator::PointerType => todo!(),
+                UnaryOperator::AddressOf => {
+                    write!(stream, "&(")?;
+                    emit_type(typ, None, stream)?;
+                    write!(stream, "){{{PREFIX}{operand}}};\n")?;
+                }
+                UnaryOperator::Dereference => {
+                    write!(stream, "*{PREFIX}{operand};\n")?;
+                }
+            }
             id
         }
         Ast::Binary(binary) => {

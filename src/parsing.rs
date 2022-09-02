@@ -6,8 +6,8 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     Ast, AstAssign, AstAssignDirection, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger,
     AstLet, AstName, AstParameter, AstProcedure, AstProcedureBody, AstProcedureType, AstReturn,
-    AstScope, AstVar, AstWhile, BinaryOperator, Lexer, LexerError, SourceLocation, SourceSpan,
-    Token, TokenKind,
+    AstScope, AstUnary, AstVar, AstWhile, BinaryOperator, Lexer, LexerError, SourceLocation,
+    SourceSpan, Token, TokenKind, UnaryOperator,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -373,8 +373,11 @@ fn parse_binary_expression(
     lexer: &mut Lexer,
     parent_precedence: usize,
 ) -> Result<Ast, ParsingError> {
-    fn get_unary_precedence(_kind: TokenKind) -> usize {
-        0
+    fn is_unary_operator(kind: TokenKind) -> bool {
+        matches!(
+            kind,
+            TokenKind::Plus | TokenKind::Minus | TokenKind::Caret | TokenKind::Ampersand
+        )
     }
 
     fn get_binary_precedence(kind: TokenKind) -> usize {
@@ -408,9 +411,29 @@ fn parse_binary_expression(
             .into(),
         )
     } else {
-        let unary_precedence = get_unary_precedence(lexer.peek_token()?.kind);
-        if unary_precedence > 0 {
-            todo!()
+        if is_unary_operator(lexer.peek_token()?.kind) {
+            let operator_token = lexer.next_token()?;
+            let operator = match &operator_token.kind {
+                TokenKind::Plus => UnaryOperator::Identity,
+                TokenKind::Minus => UnaryOperator::Negation,
+                TokenKind::Caret => UnaryOperator::PointerType,
+                TokenKind::Ampersand => UnaryOperator::AddressOf,
+                _ => unreachable!(),
+            };
+            let operand = parse_least_expression(lexer)?;
+            Ast::Unary(
+                AstUnary {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    location: SourceSpan::combine_spans(
+                        &operator_token.location,
+                        &operand.get_location(),
+                    ),
+                    operator,
+                    operand,
+                }
+                .into(),
+            )
         } else {
             parse_primary_expression(lexer)?
         }
@@ -477,6 +500,23 @@ fn parse_binary_expression(
                         direction: AstAssignDirection::Right,
                         operand,
                         value: left,
+                    }
+                    .into(),
+                )
+            }
+
+            TokenKind::Caret => {
+                let caret_token = expect_token(lexer, TokenKind::Caret)?;
+                Ast::Unary(
+                    AstUnary {
+                        resolving: false.into(),
+                        resolved_type: None.into(),
+                        location: SourceSpan::combine_spans(
+                            &left.get_location(),
+                            &caret_token.location,
+                        ),
+                        operator: UnaryOperator::Dereference,
+                        operand: left,
                     }
                     .into(),
                 )

@@ -22,6 +22,7 @@ pub enum Ast {
     Integer(Rc<AstInteger>),
     Call(Rc<AstCall>),
     Return(Rc<AstReturn>),
+    Unary(Rc<AstUnary>),
     Binary(Rc<AstBinary>),
     If(Rc<AstIf>),
     While(Rc<AstWhile>),
@@ -55,6 +56,7 @@ impl Ast {
             Ast::Integer(integer) => integer.resolved_type.borrow().clone(),
             Ast::Call(call) => call.resolved_type.borrow().clone(),
             Ast::Return(returnn) => returnn.resolved_type.borrow().clone(),
+            Ast::Unary(unary) => unary.resolved_type.borrow().clone(),
             Ast::Binary(binary) => binary.resolved_type.borrow().clone(),
             Ast::If(iff) => iff.resolved_type.borrow().clone(),
             Ast::While(whilee) => whilee.resolved_type.borrow().clone(),
@@ -82,6 +84,7 @@ impl Ast {
             Ast::Integer(integer) => integer.resolving.set(value),
             Ast::Call(call) => call.resolving.set(value),
             Ast::Return(returnn) => returnn.resolving.set(value),
+            Ast::Unary(unary) => unary.resolving.set(value),
             Ast::Binary(binary) => binary.resolving.set(value),
             Ast::If(iff) => iff.resolving.set(value),
             Ast::While(whilee) => whilee.resolving.set(value),
@@ -109,6 +112,7 @@ impl Ast {
             Ast::Integer(integer) => integer.resolving.get(),
             Ast::Call(call) => call.resolving.get(),
             Ast::Return(returnn) => returnn.resolving.get(),
+            Ast::Unary(unary) => unary.resolving.get(),
             Ast::Binary(binary) => binary.resolving.get(),
             Ast::If(iff) => iff.resolving.get(),
             Ast::While(whilee) => whilee.resolving.get(),
@@ -136,6 +140,7 @@ impl Ast {
             Ast::Integer(integer) => integer.location.clone(),
             Ast::Call(call) => call.location.clone(),
             Ast::Return(returnn) => returnn.location.clone(),
+            Ast::Unary(unary) => unary.location.clone(),
             Ast::Binary(binary) => binary.location.clone(),
             Ast::If(iff) => iff.location.clone(),
             Ast::While(whilee) => whilee.location.clone(),
@@ -170,6 +175,7 @@ impl Ast {
             Ast::Integer(integer) => Rc::as_ptr(integer) as *const _,
             Ast::Call(call) => Rc::as_ptr(call) as *const _,
             Ast::Return(returnn) => Rc::as_ptr(returnn) as *const _,
+            Ast::Unary(unary) => Rc::as_ptr(unary) as *const _,
             Ast::Binary(binary) => Rc::as_ptr(binary) as *const _,
             Ast::If(iff) => Rc::as_ptr(iff) as *const _,
             Ast::While(whilee) => Rc::as_ptr(whilee) as *const _,
@@ -284,6 +290,25 @@ pub struct AstReturn {
     pub resolved_type: ResolvedType,
     pub location: SourceSpan,
     pub value: Option<Ast>,
+}
+
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
+pub enum UnaryOperator {
+    Identity,
+    Negation,
+    LogicalNot,
+    PointerType,
+    AddressOf,
+    Dereference,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct AstUnary {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub location: SourceSpan,
+    pub operator: UnaryOperator,
+    pub operand: Ast,
 }
 
 #[derive(Clone, Debug, PartialEq, EnumAsInner)]
