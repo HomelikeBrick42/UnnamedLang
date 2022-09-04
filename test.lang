@@ -50,18 +50,18 @@ print_u64(foo)
 print_char(10)
 
 proc print_char(char: u8) => bool {
-    proc GetStdHandle(nStdHandle: s32) => ^void #stdcall #extern "GetStdHandle"
+    proc GetStdHandle(nStdHandle: u32) => ^void #stdcall #extern "GetStdHandle"
     proc WriteConsole(
         hConsoleOutput: ^void,
         lpBuffer: ^u8,
-        nNumberOfCharsToWrite: s32,
-        lpNumberOfCharsWritten: ^s32,
+        nNumberOfCharsToWrite: u32,
+        lpNumberOfCharsWritten: ^u32,
         lpReserved: u64,
     ) => u32 #stdcall #extern "WriteConsoleA"
 
-    let stdout = GetStdHandle(-11)
+    let stdout = GetStdHandle(cast(u32) cast(s32) -11)
     var char_copy <- char
-    var chars_written: s32 <- 0
+    var chars_written: u32 <- 0
     WriteConsole(stdout, &char_copy, 1, &chars_written, 0)
     return chars_written != 0
 }
