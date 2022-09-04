@@ -49,7 +49,7 @@ change_value(&foo, 10)
 print_u64(foo)
 print_char(10)
 
-proc print_char(char: u8) => bool {
+proc print_char(var char: u8) => bool {
     proc GetStdHandle(nStdHandle: u32) => ^void #stdcall #extern "GetStdHandle"
     proc WriteConsole(
         hConsoleOutput: ^void,
@@ -60,8 +60,7 @@ proc print_char(char: u8) => bool {
     ) => u32 #stdcall #extern "WriteConsoleA"
 
     let stdout = GetStdHandle(cast(u32) cast(s32) -11)
-    var char_copy <- char
     var chars_written: u32 <- 0
-    WriteConsole(stdout, &char_copy, 1, &chars_written, 0)
+    WriteConsole(stdout, &char, 1, &chars_written, 0)
     return chars_written != 0
 }

@@ -177,6 +177,12 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 allow_newline(lexer)?;
                 let mut parameters = vec![];
                 while lexer.peek_token()?.kind != TokenKind::CloseParenthesis {
+                    let mutable = if lexer.peek_token()?.kind == TokenKind::VarKeyword {
+                        expect_token(lexer, TokenKind::VarKeyword)?;
+                        true
+                    } else {
+                        false
+                    };
                     let name_token = expect_token(lexer, TokenKind::Name)?;
                     expect_token(lexer, TokenKind::Colon)?;
                     let typ = parse_least_expression(lexer)?;
@@ -188,6 +194,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                                 &name_token.location,
                                 &typ.get_location(),
                             ),
+                            mutable,
                             name: name_token.data.into_string().unwrap(),
                             typ,
                         }

@@ -233,6 +233,7 @@ pub struct AstParameter {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
     pub location: SourceSpan,
+    pub mutable: bool,
     pub name: String,
     pub typ: Ast,
 }
