@@ -365,6 +365,7 @@ fn eval_type(ast: &Ast) -> Result<Rc<Type>, ResolvingError> {
                 .map(eval_type)
                 .collect::<Result<_, _>>()?,
             return_type: eval_type(&procedure_type.return_type)?,
+            calling_convention: procedure_type.calling_convention.clone(),
         }
         .into(),
         Ast::Parameter(_) => todo!(),
@@ -431,7 +432,7 @@ pub fn resolve(
                 let mut parameter_types = vec![];
                 for (i, parameter) in procedure.parameters.iter().enumerate() {
                     let suggested_parameter_type =
-                        suggested_proc_type.map(|(parameters, _)| parameters[i].clone());
+                        suggested_proc_type.map(|(parameters, _, _)| parameters[i].clone());
                     parameter_types.push(resolve(
                         &Ast::Parameter(parameter.clone()),
                         suggested_parameter_type,
@@ -455,6 +456,7 @@ pub fn resolve(
                     Type::Procedure {
                         parameter_types,
                         return_type: return_type.clone(),
+                        calling_convention: procedure.calling_convention.clone(),
                     }
                     .into(),
                 );
@@ -622,7 +624,7 @@ pub fn resolve(
             }
             Ast::Call(call) => {
                 let operand_type = resolve(&call.operand, None, defered_asts, parent_procedure)?; // TODO: is there some way we can expect the type here?
-                let (parameter_types, return_type) =
+                let (parameter_types, return_type, _) =
                     if let Some(procedure_type) = operand_type.as_procedure() {
                         procedure_type
                     } else {

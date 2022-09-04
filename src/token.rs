@@ -63,6 +63,10 @@ pub enum TokenKind {
     GreaterThanEqual,
     #[display(fmt = "#extern")]
     ExternDirective,
+    #[display(fmt = "#cdecl")]
+    CDeclDirective,
+    #[display(fmt = "#stdcall")]
+    StdCallDirective,
     #[display(fmt = "proc")]
     ProcKeyword,
     #[display(fmt = "return")]

@@ -4,7 +4,7 @@ use std::{
     rc::Rc,
 };
 
-use derive_more::IsVariant;
+use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
 use crate::{SourceLocation, SourceSpan, Type};
@@ -196,6 +196,14 @@ pub struct AstFile {
     pub expressions: Vec<Ast>,
 }
 
+#[derive(Clone, Debug, Display, PartialEq, EnumAsInner)]
+pub enum CallingConvention {
+    #[display(fmt = "#cdecl")]
+    CDecl,
+    #[display(fmt = "#stdcall")]
+    StdCall,
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct AstProcedure {
     pub resolving: Cell<bool>,
@@ -204,6 +212,7 @@ pub struct AstProcedure {
     pub name: String,
     pub parameters: Vec<Rc<AstParameter>>,
     pub return_type: Ast,
+    pub calling_convention: CallingConvention,
     pub body: AstProcedureBody,
 }
 
@@ -213,6 +222,7 @@ pub struct AstProcedureType {
     pub resolved_type: ResolvedType,
     pub location: SourceSpan,
     pub parameter_types: Vec<Ast>,
+    pub calling_convention: CallingConvention,
     pub return_type: Ast,
 }
 

@@ -6,8 +6,8 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     Ast, AstAssign, AstAssignDirection, AstBinary, AstCall, AstCast, AstFile, AstIf, AstInteger,
     AstLet, AstName, AstParameter, AstProcedure, AstProcedureBody, AstProcedureType, AstReturn,
-    AstScope, AstUnary, AstVar, AstWhile, BinaryOperator, Lexer, LexerError, SourceLocation,
-    SourceSpan, Token, TokenKind, UnaryOperator,
+    AstScope, AstUnary, AstVar, AstWhile, BinaryOperator, CallingConvention, Lexer, LexerError,
+    SourceLocation, SourceSpan, Token, TokenKind, UnaryOperator,
 };
 
 #[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
@@ -124,6 +124,28 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
                 expect_token(lexer, TokenKind::FatRightArrow)?;
                 let return_type = parse_least_expression(lexer)?;
+                let mut calling_convention = None;
+                while matches!(
+                    lexer.peek_token()?.kind,
+                    TokenKind::CDeclDirective | TokenKind::StdCallDirective
+                ) {
+                    let directive = lexer.next_token()?;
+                    match directive.kind {
+                        TokenKind::CDeclDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::CDecl.into();
+                        }
+                        TokenKind::StdCallDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::StdCall.into();
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 Ast::ProcedureType(
                     AstProcedureType {
                         resolving: false.into(),
@@ -134,6 +156,7 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                         ),
                         parameter_types,
                         return_type,
+                        calling_convention: calling_convention.unwrap_or(CallingConvention::CDecl),
                     }
                     .into(),
                 )
@@ -167,6 +190,28 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 expect_token(lexer, TokenKind::CloseParenthesis)?;
                 expect_token(lexer, TokenKind::FatRightArrow)?;
                 let return_type = parse_least_expression(lexer)?;
+                let mut calling_convention = None;
+                while matches!(
+                    lexer.peek_token()?.kind,
+                    TokenKind::CDeclDirective | TokenKind::StdCallDirective
+                ) {
+                    let directive = lexer.next_token()?;
+                    match directive.kind {
+                        TokenKind::CDeclDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::CDecl.into();
+                        }
+                        TokenKind::StdCallDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::StdCall.into();
+                        }
+                        _ => unreachable!(),
+                    }
+                }
                 let (body, body_location) =
                     if lexer.peek_token()?.kind == TokenKind::ExternDirective {
                         let extern_token = expect_token(lexer, TokenKind::ExternDirective)?;
@@ -195,6 +240,8 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                         name,
                         parameters,
                         return_type,
+                        calling_convention: calling_convention
+                            .unwrap_or(crate::CallingConvention::CDecl),
                         body,
                     }
                     .into(),

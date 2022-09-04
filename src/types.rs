@@ -2,6 +2,8 @@ use std::{fmt::Display, rc::Rc};
 
 use enum_as_inner::EnumAsInner;
 
+use crate::CallingConvention;
+
 #[derive(Clone, Debug, PartialEq, EnumAsInner)]
 pub enum Type {
     Type,
@@ -14,6 +16,7 @@ pub enum Type {
     Procedure {
         parameter_types: Vec<Rc<Type>>,
         return_type: Rc<Type>,
+        calling_convention: CallingConvention,
     },
     Pointer {
         pointed_to: Rc<Type>,
@@ -32,6 +35,7 @@ impl Display for Type {
             Type::Procedure {
                 parameter_types,
                 return_type,
+                calling_convention,
             } => {
                 write!(f, "proc(")?;
                 for (i, parameter_type) in parameter_types.iter().enumerate() {
@@ -41,7 +45,7 @@ impl Display for Type {
                     write!(f, "{parameter_type}")?;
                 }
                 write!(f, "): ")?;
-                write!(f, "{return_type}")
+                write!(f, "{return_type} {calling_convention}")
             }
             Type::Pointer { pointed_to } => write!(f, "^{pointed_to}"),
         }

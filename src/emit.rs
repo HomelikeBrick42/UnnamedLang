@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::{
-    Ast, AstAssignDirection, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator, Type,
-    UnaryOperator,
+    Ast, AstAssignDirection, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator,
+    CallingConvention, Type, UnaryOperator,
 };
 
 const PREFIX: &'static str = "_";
@@ -40,12 +40,17 @@ fn emit_type(
         Type::Procedure {
             parameter_types,
             return_type,
+            calling_convention,
         } => {
             emit_type(return_type, None, stream)?;
+            let calling_convention_name = match calling_convention {
+                CallingConvention::CDecl => "__cdecl",
+                CallingConvention::StdCall => "__stdcall",
+            };
             if let Some(name) = name {
-                write!(stream, " (*({name}))")?;
+                write!(stream, " (*{calling_convention_name} {name})",)?;
             } else {
-                write!(stream, "(*)")?;
+                write!(stream, "(*{calling_convention_name})")?;
             }
             write!(stream, "(")?;
             if parameter_types.len() == 0 {
@@ -250,12 +255,20 @@ pub fn emit(
 
                 fn emit_function_decl(
                     parameters: &[Rc<AstParameter>],
+                    calling_convention: &CallingConvention,
                     return_type: &Type,
                     name: &str,
                     stream: &mut dyn std::io::Write,
                 ) -> Result<(), std::io::Error> {
                     emit_type(return_type, None, stream)?;
-                    write!(stream, " {name}",)?;
+                    write!(
+                        stream,
+                        " {} {name}",
+                        match calling_convention {
+                            CallingConvention::CDecl => "__cdecl",
+                            CallingConvention::StdCall => "__stdcall",
+                        }
+                    )?;
                     write!(stream, "(")?;
                     if parameters.len() == 0 {
                         write!(stream, "void")?;
@@ -284,7 +297,13 @@ pub fn emit(
                             let typ = typ.as_ref().unwrap();
                             let return_type = typ.as_procedure().unwrap().1;
                             write!(stream, "extern ")?;
-                            emit_function_decl(&procedure.parameters, return_type, name, stream)?;
+                            emit_function_decl(
+                                &procedure.parameters,
+                                &procedure.calling_convention,
+                                return_type,
+                                name,
+                                stream,
+                            )?;
                             write!(stream, ";\n")?;
                             write!(stream, "static ")?;
                             emit_type(
@@ -304,6 +323,7 @@ pub fn emit(
                             write!(stream, "static ")?;
                             emit_function_decl(
                                 &procedure.parameters,
+                                &procedure.calling_convention,
                                 return_type,
                                 &format!("_impl{name}"),
                                 stream,
@@ -329,6 +349,7 @@ pub fn emit(
                             write!(stream, "static ")?;
                             emit_function_decl(
                                 &procedure.parameters,
+                                &procedure.calling_convention,
                                 return_type,
                                 &format!(
                                     "_impl_{}_{}",
@@ -521,7 +542,7 @@ pub fn emit(
                 UnaryOperator::Negation => {
                     write!(stream, "&(")?;
                     emit_type(typ, None, stream)?;
-                    assert!(unary.operand.get_type().unwrap().as_integer().is_none());
+                    assert!(unary.operand.get_type().unwrap().as_integer().is_some());
                     write!(stream, "){{-*{PREFIX}{operand}}};\n")?;
                 }
                 UnaryOperator::LogicalNot => {
