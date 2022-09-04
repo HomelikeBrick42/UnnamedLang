@@ -67,6 +67,8 @@ pub enum TokenKind {
     CDeclDirective,
     #[display(fmt = "#stdcall")]
     StdCallDirective,
+    #[display(fmt = "#fastcall")]
+    FastCallDirective,
     #[display(fmt = "proc")]
     ProcKeyword,
     #[display(fmt = "return")]

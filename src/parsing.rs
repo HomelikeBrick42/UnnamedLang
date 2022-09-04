@@ -127,7 +127,9 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 let mut calling_convention = None;
                 while matches!(
                     lexer.peek_token()?.kind,
-                    TokenKind::CDeclDirective | TokenKind::StdCallDirective
+                    TokenKind::CDeclDirective
+                        | TokenKind::StdCallDirective
+                        | TokenKind::FastCallDirective
                 ) {
                     let directive = lexer.next_token()?;
                     match directive.kind {
@@ -142,6 +144,12 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                                 todo!()
                             }
                             calling_convention = CallingConvention::StdCall.into();
+                        }
+                        TokenKind::FastCallDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::FastCall.into();
                         }
                         _ => unreachable!(),
                     }
@@ -193,7 +201,9 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 let mut calling_convention = None;
                 while matches!(
                     lexer.peek_token()?.kind,
-                    TokenKind::CDeclDirective | TokenKind::StdCallDirective
+                    TokenKind::CDeclDirective
+                        | TokenKind::StdCallDirective
+                        | TokenKind::FastCallDirective
                 ) {
                     let directive = lexer.next_token()?;
                     match directive.kind {
@@ -208,6 +218,12 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                                 todo!()
                             }
                             calling_convention = CallingConvention::StdCall.into();
+                        }
+                        TokenKind::FastCallDirective => {
+                            if let Some(_) = calling_convention {
+                                todo!()
+                            }
+                            calling_convention = CallingConvention::FastCall.into();
                         }
                         _ => unreachable!(),
                     }

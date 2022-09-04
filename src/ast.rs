@@ -202,6 +202,8 @@ pub enum CallingConvention {
     CDecl,
     #[display(fmt = "#stdcall")]
     StdCall,
+    #[display(fmt = "#fastcall")]
+    FastCall,
 }
 
 #[derive(Clone, Debug, PartialEq)]

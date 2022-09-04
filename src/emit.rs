@@ -7,6 +7,14 @@ use crate::{
 
 const PREFIX: &'static str = "_";
 
+fn calling_convention_c_name(convention: &CallingConvention) -> &'static str {
+    match convention {
+        CallingConvention::CDecl => "__cdecl",
+        CallingConvention::StdCall => "__stdcall",
+        CallingConvention::FastCall => "__fastcall",
+    }
+}
+
 fn emit_type(
     typ: &Type,
     name: Option<String>,
@@ -43,10 +51,7 @@ fn emit_type(
             calling_convention,
         } => {
             emit_type(return_type, None, stream)?;
-            let calling_convention_name = match calling_convention {
-                CallingConvention::CDecl => "__cdecl",
-                CallingConvention::StdCall => "__stdcall",
-            };
+            let calling_convention_name = calling_convention_c_name(calling_convention);
             if let Some(name) = name {
                 write!(stream, " (*{calling_convention_name} {name})",)?;
             } else {
@@ -264,10 +269,7 @@ pub fn emit(
                     write!(
                         stream,
                         " {} {name}",
-                        match calling_convention {
-                            CallingConvention::CDecl => "__cdecl",
-                            CallingConvention::StdCall => "__stdcall",
-                        }
+                        calling_convention_c_name(calling_convention)
                     )?;
                     write!(stream, "(")?;
                     if parameters.len() == 0 {

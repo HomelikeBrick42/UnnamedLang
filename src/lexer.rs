@@ -43,6 +43,7 @@ static DIRECTIVES: phf::Map<&'static str, TokenKind> = phf_map! {
     "extern" => TokenKind::ExternDirective,
     "cdecl" => TokenKind::CDeclDirective,
     "stdcall" => TokenKind::StdCallDirective,
+    "fastcall" => TokenKind::FastCallDirective,
 };
 
 static SINGLE_CHAR_TOKENS: phf::Map<char, TokenKind> = phf_map! {
