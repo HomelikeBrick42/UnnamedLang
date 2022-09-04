@@ -53,9 +53,9 @@ fn emit_type(
             emit_type(return_type, None, stream)?;
             let calling_convention_name = calling_convention_c_name(calling_convention);
             if let Some(name) = name {
-                write!(stream, " (*{calling_convention_name} {name})",)?;
+                write!(stream, " ({calling_convention_name} *({name}))",)?;
             } else {
-                write!(stream, "(*{calling_convention_name})")?;
+                write!(stream, "({calling_convention_name}*)")?;
             }
             write!(stream, "(")?;
             if parameter_types.len() == 0 {
