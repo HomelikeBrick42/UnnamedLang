@@ -57,7 +57,7 @@ proc print_char(char: u8) => bool {
         nNumberOfCharsToWrite: s32,
         lpNumberOfCharsWritten: ^s32,
         lpReserved: u64,
-    ) => ^void #stdcall #extern "WriteConsoleA"
+    ) => u32 #stdcall #extern "WriteConsoleA"
 
     let stdout = GetStdHandle(-11)
     var char_copy <- char
