@@ -3,3 +3,5 @@
 /Cargo.lock
 *.c
 *.exe
+*.ilk
+*.pdb

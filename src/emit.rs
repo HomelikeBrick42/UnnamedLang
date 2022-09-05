@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::{
     Ast, AstAssignDirection, AstParameter, AstProcedure, AstProcedureBody, BinaryOperator,
-    CallingConvention, Type, UnaryOperator,
+    CallingConvention, SourceSpan, Type, UnaryOperator,
 };
 
 const PREFIX: &'static str = "_";
@@ -13,6 +13,17 @@ fn calling_convention_c_name(convention: &CallingConvention) -> &'static str {
         CallingConvention::StdCall => "__stdcall",
         CallingConvention::FastCall => "__fastcall",
     }
+}
+
+fn emit_line_info(
+    location: &SourceSpan,
+    stream: &mut dyn std::io::Write,
+) -> Result<(), std::io::Error> {
+    writeln!(
+        stream,
+        "#line {} {:?}",
+        location.start.line, location.filepath
+    )
 }
 
 fn emit_type(
@@ -298,6 +309,7 @@ pub fn emit(
                             let typ = procedure.resolved_type.borrow();
                             let typ = typ.as_ref().unwrap();
                             let return_type = typ.as_procedure().unwrap().1;
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "extern ")?;
                             emit_function_decl(
                                 &procedure.parameters,
@@ -307,6 +319,7 @@ pub fn emit(
                                 stream,
                             )?;
                             write!(stream, ";\n")?;
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "static ")?;
                             emit_type(
                                 typ,
@@ -322,6 +335,7 @@ pub fn emit(
                             let return_type = typ.as_procedure().unwrap().1;
                             let name =
                                 format!("_{}_{}", Rc::as_ptr(procedure) as usize, procedure.name);
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "static ")?;
                             emit_function_decl(
                                 &procedure.parameters,
@@ -331,6 +345,7 @@ pub fn emit(
                                 stream,
                             )?;
                             write!(stream, ";\n")?;
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "static ")?;
                             emit_type(typ, name.clone().into(), stream)?;
                             write!(stream, " = &_impl{name};\n")?;
@@ -348,6 +363,7 @@ pub fn emit(
                             let mut next_id = *next_id;
                             let typ = procedure.resolved_type.borrow();
                             let return_type = typ.as_ref().unwrap().as_procedure().unwrap().1;
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "static ")?;
                             emit_function_decl(
                                 &procedure.parameters,
@@ -363,8 +379,10 @@ pub fn emit(
                             write!(stream, " {{\n")?;
                             emit(&Ast::Scope(scope.clone()), &mut next_id, stream)?;
                             if return_type.is_void() {
+                                emit_line_info(&procedure.location, stream)?;
                                 write!(stream, "return (Void){{}};\n")?;
                             }
+                            emit_line_info(&procedure.location, stream)?;
                             write!(stream, "}}\n")?;
                         }
                     }
@@ -373,11 +391,19 @@ pub fn emit(
             {
                 let mut next_id = *next_id;
                 write!(stream, "\n")?;
+                emit_line_info(&file.location, stream)?;
                 write!(stream, "int main() {{\n")?;
                 for expression in &file.expressions {
                     emit(expression, &mut next_id, stream)?;
                 }
+                let end_location = SourceSpan {
+                    filepath: file.location.filepath.clone(),
+                    start: file.location.end.clone(),
+                    end: file.location.end.clone(),
+                };
+                emit_line_info(&end_location, stream)?;
                 write!(stream, "return 0;\n")?;
+                emit_line_info(&end_location, stream)?;
                 write!(stream, "}}\n")?;
             }
             usize::MAX
@@ -388,6 +414,7 @@ pub fn emit(
                 let typ = typ.as_ref().unwrap();
                 let id = *next_id;
                 *next_id += 1;
+                emit_line_info(&procedure.location, stream)?;
                 emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
                 write!(
                     stream,
@@ -402,6 +429,7 @@ pub fn emit(
                 let typ = typ.as_ref().unwrap();
                 let id = *next_id;
                 *next_id += 1;
+                emit_line_info(&procedure.location, stream)?;
                 emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
                 write!(
                     stream,
@@ -422,6 +450,7 @@ pub fn emit(
             *next_id += 1;
             let typ = scope.resolved_type.borrow();
             let typ = typ.as_ref().unwrap();
+            emit_line_info(&scope.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
@@ -434,8 +463,10 @@ pub fn emit(
             let id = *next_id;
             *next_id += 1;
             let name = format!("_{}_{}", Rc::as_ptr(declaration) as usize, declaration.name);
+            emit_line_info(&declaration.location, stream)?;
             emit_type(&typ, name.clone().into(), stream)?;
             write!(stream, " = *{PREFIX}{value};\n")?;
+            emit_line_info(&declaration.location, stream)?;
             emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = &{name};\n")?;
             id
@@ -447,8 +478,10 @@ pub fn emit(
             let id = *next_id;
             *next_id += 1;
             let name = format!("_{}_{}", Rc::as_ptr(declaration) as usize, declaration.name);
+            emit_line_info(&declaration.location, stream)?;
             emit_type(&typ, name.clone().into(), stream)?;
             write!(stream, " = *{PREFIX}{value};\n")?;
+            emit_line_info(&declaration.location, stream)?;
             emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = &{name};\n")?;
             id
@@ -459,6 +492,7 @@ pub fn emit(
             let typ = declaration.get_type().unwrap();
             let id = *next_id;
             *next_id += 1;
+            emit_line_info(&name.location, stream)?;
             emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(
                 stream,
@@ -473,6 +507,7 @@ pub fn emit(
             *next_id += 1;
             let typ = integer.resolved_type.borrow();
             let typ = typ.as_ref().unwrap();
+            emit_line_info(&integer.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = &(")?;
             emit_type(typ, None, stream)?;
@@ -488,6 +523,7 @@ pub fn emit(
                 .collect::<Result<Vec<_>, _>>()?;
             let return_id = *next_id;
             *next_id += 1;
+            emit_line_info(&call.location, stream)?;
             emit_type(
                 call.resolved_type.borrow().as_ref().unwrap(),
                 format!("{PREFIX}{return_id}").into(),
@@ -503,6 +539,7 @@ pub fn emit(
             write!(stream, ");\n")?;
             let id = *next_id;
             *next_id += 1;
+            emit_line_info(&call.location, stream)?;
             emit_type_ptr(
                 call.resolved_type.borrow().as_ref().unwrap(),
                 format!("{PREFIX}{id}").into(),
@@ -512,6 +549,7 @@ pub fn emit(
             id
         }
         Ast::Return(returnn) => {
+            emit_line_info(&returnn.location, stream)?;
             if let Some(value) = &returnn.value {
                 let value_id = emit(value, next_id, stream)?;
                 write!(stream, "return *{PREFIX}{value_id};\n")?;
@@ -522,6 +560,7 @@ pub fn emit(
             *next_id += 1;
             let typ = returnn.resolved_type.borrow();
             let typ = typ.as_ref().unwrap();
+            emit_line_info(&returnn.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
@@ -533,6 +572,7 @@ pub fn emit(
             let operand = emit(&unary.operand, next_id, stream)?;
             let id = *next_id;
             *next_id += 1;
+            emit_line_info(&unary.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = ")?;
             match &unary.operator {
@@ -572,6 +612,7 @@ pub fn emit(
             *next_id += 1;
             let typ = binary.resolved_type.borrow();
             let typ = typ.as_ref().unwrap();
+            emit_line_info(&binary.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             write!(stream, " = &(")?;
             emit_type(typ, None, stream)?;
@@ -608,20 +649,24 @@ pub fn emit(
             *next_id += 1;
             let id = *next_id;
             *next_id += 1;
+            emit_line_info(&iff.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
+            emit_line_info(&iff.condition.get_location(), stream)?;
             write!(
                 stream,
                 "if (!*{PREFIX}{condition}) goto {PREFIX}{else_id};\n"
             )?;
             let then_expression = emit(&iff.then_expression, next_id, stream)?;
+            emit_line_info(&iff.then_expression.get_location(), stream)?;
             write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
             let end_id = *next_id;
             *next_id += 1;
             write!(stream, "goto {PREFIX}{end_id};\n")?;
             write!(stream, "{PREFIX}{else_id}:;\n")?;
             if let Some(else_expression) = &iff.else_expression {
+                emit_line_info(&else_expression.get_location(), stream)?;
                 let else_expression = emit(else_expression, next_id, stream)?;
                 write!(stream, "{PREFIX}{id} = {PREFIX}{else_expression};\n")?;
             }
@@ -637,6 +682,7 @@ pub fn emit(
             let condition = emit(&whilee.condition, next_id, stream)?;
             let id = *next_id;
             *next_id += 1;
+            emit_line_info(&whilee.location, stream)?;
             emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
             assert!(typ.is_void());
             write!(stream, " = &(Void){{}};\n")?;
@@ -648,6 +694,7 @@ pub fn emit(
             )?;
             let then_expression = emit(&whilee.then_expression, next_id, stream)?;
             write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
+            emit_line_info(&whilee.then_expression.get_location(), stream)?;
             write!(stream, "goto {PREFIX}{start_id};\n")?;
             write!(stream, "{PREFIX}{end_id}:;\n")?;
             id
@@ -663,6 +710,7 @@ pub fn emit(
                 assert!(cast.operand.get_type().unwrap().as_integer().is_some());
                 let id = *next_id;
                 *next_id += 1;
+                emit_line_info(&cast.location, stream)?;
                 emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
                 write!(stream, " = &(")?;
                 emit_type(&typ, None, stream)?;
@@ -676,12 +724,14 @@ pub fn emit(
             AstAssignDirection::Left => {
                 let operand = emit(&assign.operand, next_id, stream)?;
                 let value = emit(&assign.value, next_id, stream)?;
+                emit_line_info(&assign.location, stream)?;
                 write!(stream, "*{PREFIX}{operand} = *{PREFIX}{value};\n")?;
                 operand
             }
             AstAssignDirection::Right => {
                 let value = emit(&assign.value, next_id, stream)?;
                 let operand = emit(&assign.operand, next_id, stream)?;
+                emit_line_info(&assign.location, stream)?;
                 write!(stream, "*{PREFIX}{operand} = *{PREFIX}{value};\n")?;
                 operand
             }
