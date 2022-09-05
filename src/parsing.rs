@@ -1,4 +1,4 @@
-use std::{collections::HashSet, rc::Rc};
+use std::{collections::HashMap, rc::Rc};
 
 use derive_more::Display;
 use enum_as_inner::EnumAsInner;
@@ -31,6 +31,11 @@ pub enum ParsingError {
         filepath: String,
         error: std::io::Error,
     },
+    #[display(fmt = "{location}: Cyclic #import of '{filepath}'")]
+    CyclicImport {
+        location: SourceSpan,
+        filepath: String,
+    },
 }
 
 impl From<LexerError> for ParsingError {
@@ -42,8 +47,9 @@ impl From<LexerError> for ParsingError {
 pub fn parse_file(
     filepath: &str,
     source: &str,
-    imported_files: &mut HashSet<String>,
+    imported_files: &mut HashMap<String, bool>,
 ) -> Result<Rc<AstFile>, ParsingError> {
+    imported_files.insert(filepath.into(), true);
     let mut lexer = Lexer::new(filepath.into(), source);
     let mut expressions = vec![];
     loop {
@@ -52,17 +58,21 @@ pub fn parse_file(
             break;
         }
         if lexer.peek_token()?.kind == TokenKind::ImportDirective {
-            // TODO: maybe do this better?
             let import_token = expect_token(&mut lexer, TokenKind::ImportDirective)?;
             let filepath = expect_token(&mut lexer, TokenKind::String)?
                 .data
                 .into_string()
                 .unwrap();
-            // TODO: somehow check for cylic imports?
-            if let Some(_) = imported_files.get(&filepath) {
-                continue;
+            if let Some(is_parsing) = imported_files.get(&filepath) {
+                if *is_parsing {
+                    return Err(ParsingError::CyclicImport {
+                        location: import_token.location.clone(),
+                        filepath,
+                    });
+                } else {
+                    continue;
+                }
             }
-            imported_files.insert(filepath.clone());
             let source = std::fs::read_to_string(filepath.clone()).map_err(|error| {
                 ParsingError::UnableToReadFile {
                     location: import_token.location,
@@ -80,6 +90,7 @@ pub fn parse_file(
         expect_newline(&mut lexer)?;
     }
     let end_of_file_token = expect_token(&mut lexer, TokenKind::EndOfFile)?;
+    imported_files.insert(filepath.into(), false);
     Ok(AstFile {
         resolving: false.into(),
         resolved_type: None.into(),
