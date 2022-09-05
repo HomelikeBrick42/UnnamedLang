@@ -549,11 +549,12 @@ pub fn emit(
             id
         }
         Ast::Return(returnn) => {
-            emit_line_info(&returnn.location, stream)?;
             if let Some(value) = &returnn.value {
                 let value_id = emit(value, next_id, stream)?;
+                emit_line_info(&returnn.location, stream)?;
                 write!(stream, "return *{PREFIX}{value_id};\n")?;
             } else {
+                emit_line_info(&returnn.location, stream)?;
                 write!(stream, "return (Void){{}};\n")?;
             }
             let id = *next_id;
@@ -663,11 +664,13 @@ pub fn emit(
             write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
             let end_id = *next_id;
             *next_id += 1;
+            emit_line_info(&iff.then_expression.get_location(), stream)?;
             write!(stream, "goto {PREFIX}{end_id};\n")?;
             write!(stream, "{PREFIX}{else_id}:;\n")?;
             if let Some(else_expression) = &iff.else_expression {
-                emit_line_info(&else_expression.get_location(), stream)?;
+                let location = else_expression.get_location();
                 let else_expression = emit(else_expression, next_id, stream)?;
+                emit_line_info(&location, stream)?;
                 write!(stream, "{PREFIX}{id} = {PREFIX}{else_expression};\n")?;
             }
             write!(stream, "{PREFIX}{end_id}:;\n")?;
@@ -693,6 +696,7 @@ pub fn emit(
                 "if (!*{PREFIX}{condition}) goto {PREFIX}{end_id};\n"
             )?;
             let then_expression = emit(&whilee.then_expression, next_id, stream)?;
+            emit_line_info(&whilee.then_expression.get_location(), stream)?;
             write!(stream, "{PREFIX}{id} = {PREFIX}{then_expression};\n")?;
             emit_line_info(&whilee.then_expression.get_location(), stream)?;
             write!(stream, "goto {PREFIX}{start_id};\n")?;
