@@ -61,6 +61,8 @@ pub enum TokenKind {
     LessThanEqual,
     #[display(fmt = ">=")]
     GreaterThanEqual,
+    #[display(fmt = "#import")]
+    ImportDirective,
     #[display(fmt = "#extern")]
     ExternDirective,
     #[display(fmt = "#cdecl")]

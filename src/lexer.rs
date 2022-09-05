@@ -40,6 +40,7 @@ static KEYWORDS: phf::Map<&'static str, TokenKind> = phf_map! {
 };
 
 static DIRECTIVES: phf::Map<&'static str, TokenKind> = phf_map! {
+    "import" => TokenKind::ImportDirective,
     "extern" => TokenKind::ExternDirective,
     "cdecl" => TokenKind::CDeclDirective,
     "stdcall" => TokenKind::StdCallDirective,

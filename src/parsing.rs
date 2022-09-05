@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{collections::HashSet, rc::Rc};
 
 use derive_more::Display;
 use enum_as_inner::EnumAsInner;
@@ -10,7 +10,7 @@ use crate::{
     SourceLocation, SourceSpan, Token, TokenKind, UnaryOperator,
 };
 
-#[derive(Clone, PartialEq, Debug, Display, EnumAsInner)]
+#[derive(Debug, Display, EnumAsInner)]
 pub enum ParsingError {
     #[display(fmt = "{}", _0)]
     LexerError(LexerError),
@@ -23,6 +23,14 @@ pub enum ParsingError {
         "got.kind"
     )]
     ExpectedToken { expected: TokenKind, got: Token },
+    #[display(fmt = "{location}: You can only use #import at file scope")]
+    ImportNotAtFileScope { location: SourceSpan },
+    #[display(fmt = "{location}: Unable to read '{filepath}': {error}")]
+    UnableToReadFile {
+        location: SourceSpan,
+        filepath: String,
+        error: std::io::Error,
+    },
 }
 
 impl From<LexerError> for ParsingError {
@@ -31,7 +39,11 @@ impl From<LexerError> for ParsingError {
     }
 }
 
-pub fn parse_file(filepath: &str, source: &str) -> Result<Rc<AstFile>, ParsingError> {
+pub fn parse_file(
+    filepath: &str,
+    source: &str,
+    imported_files: &mut HashSet<String>,
+) -> Result<Rc<AstFile>, ParsingError> {
     let mut lexer = Lexer::new(filepath.into(), source);
     let mut expressions = vec![];
     loop {
@@ -39,7 +51,32 @@ pub fn parse_file(filepath: &str, source: &str) -> Result<Rc<AstFile>, ParsingEr
         if lexer.peek_token()?.kind == TokenKind::EndOfFile {
             break;
         }
-        expressions.push(parse_expression(&mut lexer)?);
+        if lexer.peek_token()?.kind == TokenKind::ImportDirective {
+            // TODO: maybe do this better?
+            let import_token = expect_token(&mut lexer, TokenKind::ImportDirective)?;
+            let filepath = expect_token(&mut lexer, TokenKind::String)?
+                .data
+                .into_string()
+                .unwrap();
+            // TODO: somehow check for cylic imports?
+            if let Some(_) = imported_files.get(&filepath) {
+                continue;
+            }
+            imported_files.insert(filepath.clone());
+            let source = std::fs::read_to_string(filepath.clone()).map_err(|error| {
+                ParsingError::UnableToReadFile {
+                    location: import_token.location,
+                    filepath: filepath.clone(),
+                    error,
+                }
+            })?;
+            let file = parse_file(&filepath, &source, imported_files)?;
+            for expression in &file.expressions {
+                expressions.push(expression.clone());
+            }
+        } else {
+            expressions.push(parse_expression(&mut lexer)?);
+        }
         expect_newline(&mut lexer)?;
     }
     let end_of_file_token = expect_token(&mut lexer, TokenKind::EndOfFile)?;
@@ -77,6 +114,12 @@ fn parse_least_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
 
 fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
     Ok(match lexer.peek_token()?.kind {
+        TokenKind::ImportDirective => {
+            return Err(ParsingError::ImportNotAtFileScope {
+                location: lexer.next_token()?.location,
+            })
+        }
+
         TokenKind::Name => {
             let token = expect_token(lexer, TokenKind::Name)?;
             Ast::Name(

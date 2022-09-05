@@ -14,6 +14,7 @@ fn main() {
     let file = unwrap_error(parse_file(
         filepath.into(),
         &std::fs::read_to_string(filepath).unwrap(),
+        &mut Default::default(),
     ));
     let program = Ast::File(file);
     let mut names = HashMap::from([

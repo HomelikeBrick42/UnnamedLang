@@ -1,3 +1,5 @@
+#import "./basic.lang"
+
 proc factorial(n: u64) => u64 {
     if n <= 1 {
         return 1
@@ -6,36 +8,8 @@ proc factorial(n: u64) => u64 {
     }
 }
 
-proc print_u64(value: u64) => void {
-    var length <- 0
-    {
-        var copy <- value
-        if copy == 0 {
-            length <- 1
-        } else {
-            while copy > 0 {
-                copy <- copy / 10
-                length <- length + 1
-            }
-        }
-    }
-
-    var i <- length - 1
-    while i >= 0 {
-        var copy <- value
-        var j <- 0
-        while j < i {
-            copy <- copy / 10
-            j <- j + 1
-        }
-        let digit = copy % 10 + 48
-        print_char(cast(u8) digit)
-        i <- i - 1
-    }
-}
-
 print_u64(factorial(6))
-print_char(10)
+println()
 
 proc change_value(ptr: ^u64, value: u64) => void {
     ptr^ <- value * 25
@@ -43,24 +17,8 @@ proc change_value(ptr: ^u64, value: u64) => void {
 
 var foo: u64 <- 5
 print_u64(foo)
-print_char(10)
+println()
 
 change_value(&foo, 10)
 print_u64(foo)
-print_char(10)
-
-proc print_char(var char: u8) => bool {
-    proc GetStdHandle(nStdHandle: u32) => ^void #stdcall #extern "GetStdHandle"
-    proc WriteConsole(
-        hConsoleOutput: ^void,
-        lpBuffer: ^u8,
-        nNumberOfCharsToWrite: u32,
-        lpNumberOfCharsWritten: ^u32,
-        lpReserved: u64,
-    ) => u32 #stdcall #extern "WriteConsoleA"
-
-    let stdout = GetStdHandle(cast(u32) cast(s32) -11)
-    var chars_written: u32 <- 0
-    WriteConsole(stdout, &char, 1, &chars_written, 0)
-    return chars_written != 0
-}
+println()
