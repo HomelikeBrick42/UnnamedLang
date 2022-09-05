@@ -392,7 +392,7 @@ pub fn emit(
                 let mut next_id = *next_id;
                 write!(stream, "\n")?;
                 emit_line_info(&file.location, stream)?;
-                write!(stream, "int main() {{\n")?;
+                write!(stream, "int main(void) {{\n")?;
                 for expression in &file.expressions {
                     emit(expression, &mut next_id, stream)?;
                 }
