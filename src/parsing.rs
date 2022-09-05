@@ -36,6 +36,14 @@ pub enum ParsingError {
         location: SourceSpan,
         filepath: String,
     },
+    #[display(
+        fmt = "{new_location}: Duplicate calling convention directive {new_convention}, the original calling convention was {old_convention}"
+    )]
+    DuplicateCallingConvention {
+        old_convention: CallingConvention,
+        new_location: SourceSpan,
+        new_convention: CallingConvention,
+    },
 }
 
 impl From<LexerError> for ParsingError {
@@ -188,20 +196,32 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     let directive = lexer.next_token()?;
                     match directive.kind {
                         TokenKind::CDeclDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::CDecl,
+                                });
                             }
                             calling_convention = CallingConvention::CDecl.into();
                         }
                         TokenKind::StdCallDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::StdCall,
+                                });
                             }
                             calling_convention = CallingConvention::StdCall.into();
                         }
                         TokenKind::FastCallDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::FastCall,
+                                });
                             }
                             calling_convention = CallingConvention::FastCall.into();
                         }
@@ -269,20 +289,32 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     let directive = lexer.next_token()?;
                     match directive.kind {
                         TokenKind::CDeclDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::CDecl,
+                                });
                             }
                             calling_convention = CallingConvention::CDecl.into();
                         }
                         TokenKind::StdCallDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::StdCall,
+                                });
                             }
                             calling_convention = CallingConvention::StdCall.into();
                         }
                         TokenKind::FastCallDirective => {
-                            if let Some(_) = calling_convention {
-                                todo!()
+                            if let Some(old) = calling_convention {
+                                return Err(ParsingError::DuplicateCallingConvention {
+                                    old_convention: old,
+                                    new_location: directive.location,
+                                    new_convention: CallingConvention::FastCall,
+                                });
                             }
                             calling_convention = CallingConvention::FastCall.into();
                         }
