@@ -18,15 +18,49 @@ fn main() {
     ));
     let program = Ast::File(file);
     let mut names = HashMap::from([
-        ("type".into(), Declaration::Builtin(AstBuiltin::Type.into())),
-        ("void".into(), Declaration::Builtin(AstBuiltin::Void.into())),
-        ("bool".into(), Declaration::Builtin(AstBuiltin::Bool.into())),
+        (
+            "type".into(),
+            Declaration::Builtin(
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::Type,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "void".into(),
+            Declaration::Builtin(
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::Void,
+                }
+                .into(),
+            ),
+        ),
+        (
+            "bool".into(),
+            Declaration::Builtin(
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::Bool,
+                }
+                .into(),
+            ),
+        ),
         (
             "s8".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 1,
-                    signed: true,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 1,
+                        signed: true,
+                    },
                 }
                 .into(),
             ),
@@ -34,9 +68,13 @@ fn main() {
         (
             "s16".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 2,
-                    signed: true,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 2,
+                        signed: true,
+                    },
                 }
                 .into(),
             ),
@@ -44,9 +82,13 @@ fn main() {
         (
             "s32".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 4,
-                    signed: true,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 4,
+                        signed: true,
+                    },
                 }
                 .into(),
             ),
@@ -54,9 +96,13 @@ fn main() {
         (
             "s64".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 8,
-                    signed: true,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 8,
+                        signed: true,
+                    },
                 }
                 .into(),
             ),
@@ -64,9 +110,13 @@ fn main() {
         (
             "u8".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 1,
-                    signed: false,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 1,
+                        signed: false,
+                    },
                 }
                 .into(),
             ),
@@ -74,9 +124,13 @@ fn main() {
         (
             "u16".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 2,
-                    signed: false,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 2,
+                        signed: false,
+                    },
                 }
                 .into(),
             ),
@@ -84,9 +138,13 @@ fn main() {
         (
             "u32".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 4,
-                    signed: false,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 4,
+                        signed: false,
+                    },
                 }
                 .into(),
             ),
@@ -94,16 +152,20 @@ fn main() {
         (
             "u64".into(),
             Declaration::Builtin(
-                AstBuiltin::IntegerType {
-                    size: 8,
-                    signed: false,
+                AstBuiltin {
+                    resolving: false.into(),
+                    resolved_type: None.into(),
+                    kind: AstBuiltinKind::IntegerType {
+                        size: 8,
+                        signed: false,
+                    },
                 }
                 .into(),
             ),
         ),
     ]);
     unwrap_error(resolve_names(&program, &mut names));
-    unwrap_error(resolve(&program, None, &mut vec![], &None));
+    unwrap_error(resolve(&program, None, &mut vec![], &None, &mut vec![]));
     let mut string = Vec::new();
     emit(&program, &mut 1, &mut string).unwrap();
     std::fs::write("output.c", &string).unwrap();

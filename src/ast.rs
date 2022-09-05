@@ -62,11 +62,13 @@ impl Ast {
             Ast::While(whilee) => whilee.resolved_type.borrow().clone(),
             Ast::Cast(cast) => cast.resolved_type.borrow().clone(),
             Ast::Assign(assign) => assign.resolved_type.borrow().clone(),
-            Ast::Builtin(builtin) => match builtin.as_ref() {
-                AstBuiltin::Bool
-                | AstBuiltin::Type
-                | AstBuiltin::Void
-                | AstBuiltin::IntegerType { size: _, signed: _ } => Some(Type::Type.into()),
+            Ast::Builtin(builtin) => match &builtin.kind {
+                AstBuiltinKind::Bool
+                | AstBuiltinKind::Type
+                | AstBuiltinKind::Void
+                | AstBuiltinKind::IntegerType { size: _, signed: _ } => {
+                    builtin.resolved_type.borrow().clone()
+                }
             },
         }
     }
@@ -90,11 +92,11 @@ impl Ast {
             Ast::While(whilee) => whilee.resolving.set(value),
             Ast::Cast(cast) => cast.resolving.set(value),
             Ast::Assign(assign) => assign.resolving.set(value),
-            Ast::Builtin(builtin) => match builtin.as_ref() {
-                AstBuiltin::Type => (),
-                AstBuiltin::Void => (),
-                AstBuiltin::Bool => (),
-                AstBuiltin::IntegerType { size: _, signed: _ } => (),
+            Ast::Builtin(builtin) => match &builtin.kind {
+                AstBuiltinKind::Type => (),
+                AstBuiltinKind::Void => (),
+                AstBuiltinKind::Bool => (),
+                AstBuiltinKind::IntegerType { size: _, signed: _ } => (),
             },
         }
     }
@@ -118,11 +120,11 @@ impl Ast {
             Ast::While(whilee) => whilee.resolving.get(),
             Ast::Cast(cast) => cast.resolving.get(),
             Ast::Assign(assign) => assign.resolving.get(),
-            Ast::Builtin(builtin) => match builtin.as_ref() {
-                AstBuiltin::Type => false,
-                AstBuiltin::Void => false,
-                AstBuiltin::Bool => false,
-                AstBuiltin::IntegerType { size: _, signed: _ } => false,
+            Ast::Builtin(builtin) => match &builtin.kind {
+                AstBuiltinKind::Type => false,
+                AstBuiltinKind::Void => false,
+                AstBuiltinKind::Bool => false,
+                AstBuiltinKind::IntegerType { size: _, signed: _ } => false,
             },
         }
     }
@@ -394,7 +396,14 @@ pub struct AstAssign {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum AstBuiltin {
+pub struct AstBuiltin {
+    pub resolving: Cell<bool>,
+    pub resolved_type: ResolvedType,
+    pub kind: AstBuiltinKind,
+}
+
+#[derive(Clone, Debug, PartialEq, EnumAsInner)]
+pub enum AstBuiltinKind {
     Type,
     Void,
     Bool,
