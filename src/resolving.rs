@@ -402,14 +402,7 @@ fn eval_type(ast: &Ast, type_cache: &mut Vec<Rc<Type>>) -> Result<Rc<Type>, Reso
         Ast::While(_) => todo!(),
         Ast::Cast(_) => todo!(),
         Ast::Assign(_) => todo!(),
-        Ast::Builtin(builtin) => match &builtin.kind {
-            AstBuiltinKind::Type => get_or_add_type_type(type_cache),
-            AstBuiltinKind::Void => get_or_add_type_void(type_cache),
-            AstBuiltinKind::Bool => get_or_add_type_bool(type_cache),
-            &AstBuiltinKind::IntegerType { size, signed } => {
-                get_or_add_type_integer(type_cache, size, signed)
-            }
-        },
+        Ast::Builtin(builtin) => builtin.typ.borrow().as_ref().unwrap().clone(),
     })
 }
 
@@ -1004,14 +997,17 @@ pub fn resolve(
                 }
                 *assign.resolved_type.borrow_mut() = Some(operand_type);
             }
-            Ast::Builtin(builtin) => match &builtin.kind {
-                AstBuiltinKind::Type
-                | AstBuiltinKind::Void
-                | AstBuiltinKind::Bool
-                | AstBuiltinKind::IntegerType { size: _, signed: _ } => {
-                    *builtin.resolved_type.borrow_mut() = Some(get_or_add_type_type(type_cache))
-                }
-            },
+            Ast::Builtin(builtin) => {
+                *builtin.resolved_type.borrow_mut() = Some(get_or_add_type_type(type_cache));
+                *builtin.typ.borrow_mut() = Some(match &builtin.kind {
+                    AstBuiltinKind::Type => get_or_add_type_type(type_cache),
+                    AstBuiltinKind::Void => get_or_add_type_void(type_cache),
+                    AstBuiltinKind::Bool => get_or_add_type_bool(type_cache),
+                    &AstBuiltinKind::IntegerType { size, signed } => {
+                        get_or_add_type_integer(type_cache, size, signed)
+                    }
+                });
+            }
         }
         ast.set_resolving(false);
         ast.get_type()

@@ -399,6 +399,7 @@ pub struct AstAssign {
 pub struct AstBuiltin {
     pub resolving: Cell<bool>,
     pub resolved_type: ResolvedType,
+    pub typ: RefCell<Option<Rc<Type>>>,
     pub kind: AstBuiltinKind,
 }
 

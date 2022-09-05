@@ -489,18 +489,23 @@ pub fn emit(
         Ast::Name(name) => {
             let declaration = name.resolved_declaration.borrow();
             let declaration = declaration.as_ref().unwrap();
-            let typ = declaration.get_type().unwrap();
-            let id = *next_id;
-            *next_id += 1;
-            emit_line_info(&name.location, stream)?;
-            emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
-            write!(
-                stream,
-                " = &_{}_{};\n",
-                declaration.get_ptr() as usize,
-                name.name
-            )?;
-            id
+            match declaration {
+                Ast::Builtin(_) => emit(declaration, next_id, stream)?,
+                _ => {
+                    let typ = declaration.get_type().unwrap();
+                    let id = *next_id;
+                    *next_id += 1;
+                    emit_line_info(&name.location, stream)?;
+                    emit_type_ptr(&typ, format!("{PREFIX}{id}").into(), stream)?;
+                    write!(
+                        stream,
+                        " = &_{}_{};\n",
+                        declaration.get_ptr() as usize,
+                        name.name
+                    )?;
+                    id
+                }
+            }
         }
         Ast::Integer(integer) => {
             let id = *next_id;
@@ -618,8 +623,6 @@ pub fn emit(
             write!(stream, " = &(")?;
             emit_type(typ, None, stream)?;
             write!(stream, "){{")?;
-            assert!(binary.left.get_type().unwrap().as_integer().is_some());
-            assert!(binary.right.get_type().unwrap().as_integer().is_some());
             match &binary.operator {
                 BinaryOperator::Add => write!(stream, "*{PREFIX}{left} + *{PREFIX}{right}")?,
                 BinaryOperator::Subtract => write!(stream, "*{PREFIX}{left} - *{PREFIX}{right}")?,
@@ -740,6 +743,21 @@ pub fn emit(
                 operand
             }
         },
-        Ast::Builtin(_) => todo!(),
+        Ast::Builtin(builtin) => {
+            let id = *next_id;
+            *next_id += 1;
+            let typ = builtin.resolved_type.borrow();
+            let typ = typ.as_ref().unwrap();
+            emit_line_info(&Ast::Builtin(builtin.clone()).get_location(), stream)?;
+            emit_type_ptr(typ, format!("{PREFIX}{id}").into(), stream)?;
+            write!(stream, " = &(")?;
+            emit_type(typ, None, stream)?;
+            write!(
+                stream,
+                "){{{}}};\n",
+                Rc::as_ptr(builtin.typ.borrow().as_ref().unwrap()) as usize
+            )?;
+            id
+        }
     })
 }

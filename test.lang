@@ -22,3 +22,11 @@ println()
 change_value(&foo, 10)
 print_u64(foo)
 println()
+
+let int_value = s64
+if int_value == s32 {
+    print_u64(1)
+} else {
+    print_u64(2)
+}
+println()

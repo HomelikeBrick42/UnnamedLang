@@ -24,6 +24,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::Type,
                 }
                 .into(),
@@ -35,6 +36,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::Void,
                 }
                 .into(),
@@ -46,6 +48,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::Bool,
                 }
                 .into(),
@@ -57,6 +60,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 1,
                         signed: true,
@@ -71,6 +75,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 2,
                         signed: true,
@@ -85,6 +90,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 4,
                         signed: true,
@@ -99,6 +105,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 8,
                         signed: true,
@@ -113,6 +120,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 1,
                         signed: false,
@@ -127,6 +135,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 2,
                         signed: false,
@@ -141,6 +150,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 4,
                         signed: false,
@@ -155,6 +165,7 @@ fn main() {
                 AstBuiltin {
                     resolving: false.into(),
                     resolved_type: None.into(),
+                    typ: None.into(),
                     kind: AstBuiltinKind::IntegerType {
                         size: 8,
                         signed: false,
