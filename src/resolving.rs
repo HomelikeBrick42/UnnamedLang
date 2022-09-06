@@ -4,7 +4,7 @@ use derive_more::{Display, IsVariant};
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    get_or_add_type_bool, get_or_add_type_integer, get_or_add_type_pointer,
+    eval, get_or_add_type_bool, get_or_add_type_integer, get_or_add_type_pointer,
     get_or_add_type_procedure, get_or_add_type_type, get_or_add_type_void, Ast, AstAssignDirection,
     AstBuiltin, AstBuiltinKind, AstLet, AstParameter, AstProcedure, AstProcedureBody, AstVar,
     BinaryOperator, SourceSpan, Type, UnaryOperator,
@@ -356,56 +356,6 @@ fn expect_type(
     }
 }
 
-fn eval_type(ast: &Ast, type_cache: &mut Vec<Rc<Type>>) -> Result<Rc<Type>, ResolvingError> {
-    Ok(match ast {
-        Ast::File(_) => todo!(),
-        Ast::Procedure(_) => todo!(),
-        Ast::ProcedureType(procedure_type) => {
-            let parameter_types = procedure_type
-                .parameter_types
-                .iter()
-                .map(|typ| eval_type(typ, type_cache))
-                .collect::<Result<_, _>>()?;
-            let return_type = eval_type(&procedure_type.return_type, type_cache)?;
-            get_or_add_type_procedure(
-                type_cache,
-                parameter_types,
-                return_type,
-                procedure_type.calling_convention.clone(),
-            )
-        }
-        Ast::Parameter(_) => todo!(),
-        Ast::Scope(_) => todo!(),
-        Ast::LetDeclaration(_) => todo!(),
-        Ast::VarDeclaration(_) => todo!(),
-        Ast::Name(name) => eval_type(
-            name.resolved_declaration.borrow().as_ref().unwrap(),
-            type_cache,
-        )?,
-        Ast::Integer(_) => todo!(),
-        Ast::Call(_) => todo!(),
-        Ast::Return(_) => todo!(),
-        Ast::Unary(unary) => match &unary.operator {
-            UnaryOperator::Identity => todo!(),
-            UnaryOperator::Negation => todo!(),
-            UnaryOperator::LogicalNot => todo!(),
-            UnaryOperator::PointerType => {
-                let pointed_to = eval_type(&unary.operand, type_cache)?;
-                get_or_add_type_pointer(type_cache, pointed_to)
-            }
-            .into(),
-            UnaryOperator::AddressOf => todo!(),
-            UnaryOperator::Dereference => todo!(),
-        },
-        Ast::Binary(_) => todo!(),
-        Ast::If(_) => todo!(),
-        Ast::While(_) => todo!(),
-        Ast::Cast(_) => todo!(),
-        Ast::Assign(_) => todo!(),
-        Ast::Builtin(builtin) => builtin.typ.borrow().as_ref().unwrap().clone(),
-    })
-}
-
 pub fn resolve(
     ast: &Ast,
     suggested_type: Option<Rc<Type>>,
@@ -459,7 +409,10 @@ pub fn resolve(
                     &get_or_add_type_type(type_cache),
                     procedure.return_type.get_location(),
                 )?;
-                let return_type = eval_type(&procedure.return_type, type_cache)?;
+                let return_type = eval(&procedure.return_type, type_cache)
+                    .as_type()
+                    .unwrap()
+                    .clone();
                 *procedure.resolved_type.borrow_mut() = Some(get_or_add_type_procedure(
                     type_cache,
                     parameter_types,
@@ -553,7 +506,7 @@ pub fn resolve(
                     parameter.typ.get_location(),
                 )?;
                 *parameter.resolved_type.borrow_mut() =
-                    Some(eval_type(&parameter.typ, type_cache)?);
+                    Some(eval(&parameter.typ, type_cache).as_type().unwrap().clone());
             }
             Ast::Scope(scope) => {
                 *scope.resolved_type.borrow_mut() = Some(get_or_add_type_void(type_cache));
@@ -575,7 +528,7 @@ pub fn resolve(
                         &get_or_add_type_type(type_cache),
                         typ.get_location(),
                     )?;
-                    let resolved_type = eval_type(typ, type_cache)?;
+                    let resolved_type = eval(typ, type_cache).as_type().unwrap().clone();
                     *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
                     Some(resolved_type)
                 } else {
@@ -612,7 +565,7 @@ pub fn resolve(
                         &get_or_add_type_type(type_cache),
                         typ.get_location(),
                     )?;
-                    let resolved_type = eval_type(typ, type_cache)?;
+                    let resolved_type = eval(typ, type_cache).as_type().unwrap().clone();
                     *declaration.resolved_type.borrow_mut() = Some(resolved_type.clone());
                     Some(resolved_type)
                 } else {
@@ -937,7 +890,7 @@ pub fn resolve(
                     &get_or_add_type_type(type_cache),
                     cast.typ.get_location(),
                 )?;
-                let typ = eval_type(&cast.typ, type_cache)?;
+                let typ = eval(&cast.typ, type_cache).as_type().unwrap().clone();
                 let operand_type = resolve(
                     &cast.operand,
                     typ.clone().into(),
