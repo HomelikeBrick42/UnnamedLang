@@ -100,8 +100,6 @@ pub fn parse_file(
     let end_of_file_token = expect_token(&mut lexer, TokenKind::EndOfFile)?;
     imported_files.insert(filepath.into(), false);
     Ok(AstFile {
-        resolving: false.into(),
-        resolved_type: None.into(),
         location: SourceSpan::combine_spans(
             &SourceSpan {
                 filepath: filepath.into(),
@@ -143,8 +141,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             let token = expect_token(lexer, TokenKind::Name)?;
             Ast::Name(
                 AstName {
-                    resolving: false.into(),
-                    resolved_declaration: None.into(),
                     location: token.location,
                     name: token.data.into_string().unwrap(),
                 }
@@ -156,8 +152,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             let token = expect_token(lexer, TokenKind::Integer)?;
             Ast::Integer(
                 AstInteger {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: token.location,
                     value: token.data.into_integer().unwrap(),
                 }
@@ -230,8 +224,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                 }
                 Ast::ProcedureType(
                     AstProcedureType {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &proc_token.location,
                             &return_type.get_location(),
@@ -262,8 +254,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     let typ = parse_least_expression(lexer)?;
                     parameters.push(
                         AstParameter {
-                            resolving: false.into(),
-                            resolved_type: None.into(),
                             location: SourceSpan::combine_spans(
                                 &name_token.location,
                                 &typ.get_location(),
@@ -343,8 +333,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
                     };
                 Ast::Procedure(
                     AstProcedure {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(&proc_token.location, &body_location),
                         name,
                         parameters,
@@ -375,8 +363,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             };
             Ast::Return(
                 AstReturn {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: value
                         .as_ref()
                         .map(|value| {
@@ -404,8 +390,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             };
             Ast::If(
                 AstIf {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: SourceSpan::combine_spans(
                         &if_token.location,
                         &else_expression
@@ -427,8 +411,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             let then_expression = parse_expression(lexer)?;
             Ast::While(
                 AstWhile {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: SourceSpan::combine_spans(
                         &while_token.location,
                         &then_expression.get_location(),
@@ -456,8 +438,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             let value = parse_expression(lexer)?;
             Ast::LetDeclaration(
                 AstLet {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: SourceSpan::combine_spans(&let_token.location, &value.get_location()),
                     name,
                     typ,
@@ -483,8 +463,6 @@ fn parse_primary_expression(lexer: &mut Lexer) -> Result<Ast, ParsingError> {
             let value = parse_expression(lexer)?;
             Ast::VarDeclaration(
                 AstVar {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: SourceSpan::combine_spans(&var_token.location, &value.get_location()),
                     name,
                     typ,
@@ -514,8 +492,6 @@ fn parse_scope(lexer: &mut Lexer) -> Result<Rc<AstScope>, ParsingError> {
     }
     let close_brace_token = expect_token(lexer, TokenKind::CloseBrace)?;
     Ok(AstScope {
-        resolving: false.into(),
-        resolved_type: None.into(),
         location: SourceSpan::combine_spans(
             &open_brace_token.location,
             &close_brace_token.location,
@@ -558,8 +534,6 @@ fn parse_binary_expression(
         let operand = parse_least_expression(lexer)?;
         Ast::Cast(
             AstCast {
-                resolving: false.into(),
-                resolved_type: None.into(),
                 location: SourceSpan::combine_spans(&cast_token.location, &operand.get_location()),
                 typ,
                 operand,
@@ -579,8 +553,6 @@ fn parse_binary_expression(
             let operand = parse_least_expression(lexer)?;
             Ast::Unary(
                 AstUnary {
-                    resolving: false.into(),
-                    resolved_type: None.into(),
                     location: SourceSpan::combine_spans(
                         &operator_token.location,
                         &operand.get_location(),
@@ -608,8 +580,6 @@ fn parse_binary_expression(
                 let close_parenthesis_token = expect_token(lexer, TokenKind::CloseParenthesis)?;
                 Ast::Call(
                     AstCall {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &left.get_location(),
                             &close_parenthesis_token.location,
@@ -627,8 +597,6 @@ fn parse_binary_expression(
                 let value = parse_expression(lexer)?;
                 Ast::Assign(
                     AstAssign {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &left.get_location(),
                             &value.get_location(),
@@ -647,8 +615,6 @@ fn parse_binary_expression(
                 let operand = parse_expression(lexer)?;
                 Ast::Assign(
                     AstAssign {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &left.get_location(),
                             &operand.get_location(),
@@ -665,8 +631,6 @@ fn parse_binary_expression(
                 let caret_token = expect_token(lexer, TokenKind::Caret)?;
                 Ast::Unary(
                     AstUnary {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &left.get_location(),
                             &caret_token.location,
@@ -700,8 +664,6 @@ fn parse_binary_expression(
                 let right = parse_binary_expression(lexer, binary_precedence)?;
                 Ast::Binary(
                     AstBinary {
-                        resolving: false.into(),
-                        resolved_type: None.into(),
                         location: SourceSpan::combine_spans(
                             &left.get_location(),
                             &right.get_location(),
