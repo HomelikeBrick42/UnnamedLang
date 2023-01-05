@@ -4,7 +4,7 @@ use super::{GetLocation, SourceSpan, Token};
 pub enum Ast<'filepath, 'source> {
     Procedure {
         proc_token: Token<'filepath, 'source>,
-        name_token: Token<'filepath, 'source>,
+        name_token: Option<Token<'filepath, 'source>>,
         open_parenthesis_token: Token<'filepath, 'source>,
         parameters: Vec<AstParameter<'filepath, 'source>>,
         close_parenthesis_token: Token<'filepath, 'source>,

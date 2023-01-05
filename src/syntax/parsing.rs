@@ -74,10 +74,15 @@ fn parse_primary_expression<'filepath, 'source>(
             kind: TokenKind::ProcKeyword,
             ..
         } => {
-            let name_token = next_token(lexer)?;
-            if !matches!(name_token.kind, TokenKind::Name(_)) {
-                return Err(ParsingError::ExpectedNameToken { got: name_token });
-            }
+            let name_token = if let Some(Token {
+                kind: TokenKind::Name(_),
+                ..
+            }) = lexer.peek_token()?
+            {
+                Some(next_token(lexer)?)
+            } else {
+                None
+            };
             let open_parenthesis_token = expect_token(lexer, TokenKind::OpenParenthesis)?;
             let mut parameters = vec![];
             while !matches!(
