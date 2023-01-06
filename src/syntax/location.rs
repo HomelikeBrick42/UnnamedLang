@@ -1,6 +1,6 @@
 use derive_more::Display;
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Display)]
 #[display(fmt = "{line}:{column}")]
 pub struct SourceLocation {
     pub position: usize,
@@ -8,7 +8,7 @@ pub struct SourceLocation {
     pub column: usize,
 }
 
-#[derive(Clone, Copy, Debug, Display)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Display)]
 #[display(fmt = "{filepath}:{start}")]
 pub struct SourceSpan<'filepath> {
     pub filepath: &'filepath str,
