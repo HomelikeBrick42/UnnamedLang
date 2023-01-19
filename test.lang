@@ -1,0 +1,10 @@
+proc bar(a: int, b: int, c: int) => int {
+    return foo(c, b, a)
+}
+
+proc foo(a: int, b: int, c: int) => int {
+    return a
+}
+
+foo(5, 6, 7)
+bar(1, 2, 3)

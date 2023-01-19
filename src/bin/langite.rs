@@ -7,20 +7,9 @@ use langite::{
 
 fn main() {
     let filepath = "test.lang";
-    let source = "
-proc bar(a: int, b: int, c: int) => int {
-    return foo(c, b, a)
-}
-
-proc foo(a: int, b: int, c: int) => int {
-    return a
-}
-
-foo(5, 6, 7)
-bar(1, 2, 3)
-";
+    let source = std::fs::read_to_string(filepath).unwrap();
     let parse_start_time = std::time::Instant::now();
-    let expressions = parse_file(filepath, source).unwrap_or_else(|error| {
+    let expressions = parse_file(filepath, &source).unwrap_or_else(|error| {
         println!("{error}");
         std::process::exit(1)
     });
