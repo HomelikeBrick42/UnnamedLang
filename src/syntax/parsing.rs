@@ -1,8 +1,8 @@
 use derive_more::Display;
 
 use super::{
-    Ast, AstBody, AstParameter, BinaryOperator, GetLocation, Lexer, LexerError, Token, TokenKind,
-    UnaryOperator,
+    Ast, AstBody, AstParameter, BinaryOperator, GetLocation, Lexer, LexerError, SourceSpan, Token,
+    TokenKind, UnaryOperator,
 };
 
 #[derive(Debug, Display)]
@@ -20,6 +20,8 @@ pub enum ParsingError<'filepath, 'source> {
     },
     #[display(fmt = "Unexpected end of source file '{filepath}'")]
     UnexpectedEndOfFile { filepath: &'filepath str },
+    #[display(fmt = "{location}: Procedure with name must have a body")]
+    ProcedureWithNameMustHaveBody { location: SourceSpan<'filepath> },
 }
 
 impl<'filepath, 'source> From<LexerError<'filepath>> for ParsingError<'filepath, 'source> {
@@ -145,6 +147,11 @@ fn parse_primary_expression<'filepath, 'source>(
             {
                 Some(AstBody::Block(Box::new(parse_block(lexer)?)))
             } else {
+                if name_token.is_some() {
+                    return Err(ParsingError::ProcedureWithNameMustHaveBody {
+                        location: proc_token.get_location(),
+                    });
+                }
                 None
             };
             Ast::Procedure {

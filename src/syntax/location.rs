@@ -17,9 +17,9 @@ pub struct SourceSpan<'filepath> {
 }
 
 impl SourceSpan<'static> {
-    pub fn unknown() -> Self {
+    pub fn builtin_location() -> Self {
         Self {
-            filepath: "unknown file",
+            filepath: "builtin.lang",
             start: SourceLocation {
                 position: 0,
                 line: 1,

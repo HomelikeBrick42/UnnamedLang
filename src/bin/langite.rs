@@ -1,21 +1,55 @@
-use langite::syntax::parse_file;
+use std::collections::HashMap;
+
+use langite::{
+    binding::{bind_file, BoundNode, BoundNodes, Type},
+    syntax::{parse_file, SourceSpan},
+};
 
 fn main() {
     let filepath = "test.lang";
     let source = "
+proc bar(a: int, b: int, c: int) => int {
+    return foo(c, b, a)
+}
+
 proc foo(a: int, b: int, c: int) => int {
-    return a + b * c
+    return a
 }
 
 foo(5, 6, 7)
+bar(1, 2, 3)
 ";
     let parse_start_time = std::time::Instant::now();
-    let result = parse_file(filepath, source);
-    let time = parse_start_time.elapsed().as_secs_f64();
-    match result {
-        Ok(_asts) => {
-            println!("Parsed successfully in {:.3}ms", time * 1000.0);
-        }
-        Err(error) => println!("{error}"),
-    }
+    let expressions = parse_file(filepath, source).unwrap_or_else(|error| {
+        println!("{error}");
+        std::process::exit(1)
+    });
+    let parse_time = parse_start_time.elapsed().as_secs_f64();
+    println!("Parsed successfully in {:.3}ms", parse_time * 1000.0);
+
+    let mut nodes = BoundNodes::new();
+    let mut names = HashMap::new();
+
+    let int_type = nodes.get_types_mut().get_builtin_type(Type::Int);
+    let int = nodes.add_node(
+        BoundNode::Type(int_type),
+        SourceSpan::builtin_location(),
+        int_type,
+    );
+    names.insert("int", int);
+
+    let binding_start_time = std::time::Instant::now();
+    let root = bind_file(filepath, &mut nodes, &expressions, &names).unwrap_or_else(|error| {
+        println!("{error}");
+        std::process::exit(1)
+    });
+    let binding_time = binding_start_time.elapsed().as_secs_f64();
+    println!(
+        "Type checked successfully in {:.3}ms",
+        binding_time * 1000.0
+    );
+
+    _ = root;
+    println!("\nTypes:\n{}", nodes.get_types());
+    println!("\nNodes:\n{nodes}");
 }
