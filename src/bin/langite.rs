@@ -19,11 +19,12 @@ fn main() {
     let mut nodes = BoundNodes::new();
     let mut names = HashMap::new();
 
+    let type_type = nodes.get_types_mut().get_builtin_type(Type::Type);
     let int_type = nodes.get_types_mut().get_builtin_type(Type::Int);
     let int = nodes.add_node(
         BoundNode::Type(int_type),
         SourceSpan::builtin_location(),
-        int_type,
+        type_type,
     );
     names.insert("int", int);
 

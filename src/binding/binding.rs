@@ -252,7 +252,19 @@ fn bind_expression<'filepath, 'source, 'a>(
                         let (_, location, _) = nodes.get_node(parameter_type);
                         return Err(BindingError::NotAConstant { location });
                     }
-                    // TODO: check that it is a type
+                    let (_, _, parameter_type_type) = nodes.get_node(parameter_type);
+                    let type_type = nodes.get_types_mut().get_builtin_type(Type::Type);
+                    if parameter_type_type != type_type {
+                        let mut expected_type = String::new();
+                        Type::write(&mut expected_type, type_type, nodes.get_types()).unwrap();
+                        let mut got_type = String::new();
+                        Type::write(&mut got_type, parameter_type_type, nodes.get_types()).unwrap();
+                        return Err(BindingError::ExpectedType {
+                            location: parameter.get_location(),
+                            expected_type,
+                            got_type,
+                        });
+                    }
                     let parameter_type = eval_type(parameter_type, nodes, &names)?;
 
                     let param =
@@ -279,10 +291,10 @@ fn bind_expression<'filepath, 'source, 'a>(
 
             let return_type = return_type
                 .as_ref()
-                .map(|return_type| {
+                .map(|return_type_ast| {
                     let return_type = bind_expression(
                         nodes,
-                        return_type,
+                        return_type_ast,
                         &mut names,
                         parent_procedure_return_type,
                         to_be_checked,
@@ -291,7 +303,19 @@ fn bind_expression<'filepath, 'source, 'a>(
                         let (_, location, _) = nodes.get_node(return_type);
                         return Err(BindingError::NotAConstant { location });
                     }
-                    // TODO: check that it is a type
+                    let (_, _, return_type_type) = nodes.get_node(return_type);
+                    let type_type = nodes.get_types_mut().get_builtin_type(Type::Type);
+                    if return_type_type != type_type {
+                        let mut expected_type = String::new();
+                        Type::write(&mut expected_type, type_type, nodes.get_types()).unwrap();
+                        let mut got_type = String::new();
+                        Type::write(&mut got_type, return_type_type, nodes.get_types()).unwrap();
+                        return Err(BindingError::ExpectedType {
+                            location: return_type_ast.get_location(),
+                            expected_type,
+                            got_type,
+                        });
+                    }
                     let return_type = eval_type(return_type, nodes, &names)?;
                     Ok(return_type)
                 })
@@ -335,7 +359,7 @@ fn bind_expression<'filepath, 'source, 'a>(
                 }
                 id
             } else {
-                assert!(name_token.is_none()); // a procedure type cannot have a name'
+                assert!(name_token.is_none()); // a procedure type cannot have a name
                 nodes.add_node(BoundNode::Type(typ), location, typ)
             }
         }

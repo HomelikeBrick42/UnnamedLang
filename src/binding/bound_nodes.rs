@@ -58,7 +58,7 @@ pub enum BoundNode {
     #[display(fmt = "Const {{ value = {value} }}")]
     Const { value: BoundNodeID },
     #[display(
-        fmt = "Procedure {{ operand = {operand}, arguments = {} }}",
+        fmt = "Call {{ operand = {operand}, arguments = {} }}",
         "slice_to_string(arguments).unwrap()"
     )]
     Call {

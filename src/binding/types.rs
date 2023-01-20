@@ -31,6 +31,8 @@ pub enum Type {
     ForwardDeclaration(Option<TypeID>),
     #[display(fmt = "void")]
     Void,
+    #[display(fmt = "type")]
+    Type,
     #[display(fmt = "never")]
     Never,
     #[display(fmt = "int")]
@@ -60,6 +62,7 @@ impl Type {
                 }
             }
             Type::Void => write!(f, "void"),
+            Type::Type => write!(f, "type"),
             Type::Never => write!(f, "never"),
             Type::Int => write!(f, "int"),
             Type::Char => write!(f, "char"),
