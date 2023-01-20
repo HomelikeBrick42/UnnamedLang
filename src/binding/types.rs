@@ -39,7 +39,7 @@ pub enum Type {
     Int,
     #[display(fmt = "char")]
     Char,
-    #[display(fmt = "slice[{inner_type}]")]
+    #[display(fmt = "Slice {{ inner_type = {inner_type} }}")]
     Slice { inner_type: TypeID },
     #[display(
         fmt = "Procedure {{ parameter_types = {}, return_type = {return_type} }}",
