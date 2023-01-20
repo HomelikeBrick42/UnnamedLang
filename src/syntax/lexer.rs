@@ -148,6 +148,7 @@ impl<'filepath, 'source> Lexer<'filepath, 'source> {
                             "do" => TokenKind::DoKeyword,
                             "let" => TokenKind::LetKeyword,
                             "var" => TokenKind::VarKeyword,
+                            "const" => TokenKind::ConstKeyword,
                             _ => TokenKind::Name(name),
                         }
                     }

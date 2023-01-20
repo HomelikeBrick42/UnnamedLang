@@ -73,6 +73,8 @@ pub enum BoundNode {
     Integer(u128),
     #[display(fmt = "String {{ value = {_0} }}")]
     String(String),
+    #[display(fmt = "{_0}")]
+    Builtin(Builtin),
 }
 
 impl BoundNode {
@@ -100,6 +102,7 @@ impl BoundNode {
             BoundNode::Name { resolved_node } => Self::is_constant(resolved_node, nodes),
             BoundNode::Integer(_) => true,
             BoundNode::String(_) => true,
+            BoundNode::Builtin(ref builtin) => Builtin::is_constant(builtin, nodes),
         }
     }
 }
@@ -164,5 +167,14 @@ impl<'filepath> std::fmt::Display for BoundNodes<'filepath> {
 impl<'filepath> Default for BoundNodes<'filepath> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Clone, Debug, Display, PartialEq, Eq)]
+pub enum Builtin {}
+
+impl Builtin {
+    pub fn is_constant(builtin: &Builtin, _nodes: &BoundNodes) -> bool {
+        match *builtin {}
     }
 }

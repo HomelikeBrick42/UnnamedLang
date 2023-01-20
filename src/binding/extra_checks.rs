@@ -67,6 +67,7 @@ pub fn extra_checks<'filepath>(
         BoundNode::Name { resolved_node: _ } => (),
         BoundNode::Integer(_) => (),
         BoundNode::String(_) => (),
+        BoundNode::Builtin(_) => (),
     })
 }
 
@@ -102,5 +103,6 @@ fn returns_in_all_paths<'filepath>(node: BoundNodeID, nodes: &BoundNodes<'filepa
         BoundNode::Name { resolved_node: _ } => false,
         BoundNode::Integer(_) => false,
         BoundNode::String(_) => false,
+        BoundNode::Builtin(ref builtin) => match *builtin {},
     }
 }

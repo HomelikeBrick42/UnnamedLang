@@ -35,6 +35,13 @@ pub enum Ast<'filepath, 'source> {
         typ: Box<Ast<'filepath, 'source>>,
         value: Option<Box<Ast<'filepath, 'source>>>,
     },
+    Const {
+        const_token: Token<'filepath, 'source>,
+        name_token: Token<'filepath, 'source>,
+        colon_token: Token<'filepath, 'source>,
+        typ: Option<Box<Ast<'filepath, 'source>>>,
+        value: Box<Ast<'filepath, 'source>>,
+    },
     Unary {
         operator: UnaryOperator<'filepath, 'source>,
         operand: Box<Ast<'filepath, 'source>>,
@@ -112,6 +119,13 @@ impl<'filepath, 'source> GetLocation<'filepath> for Ast<'filepath, 'source> {
                 typ,
                 value,
             } => SourceSpan::combine(var_token, value.as_ref().unwrap_or(typ)),
+            Ast::Const {
+                const_token,
+                name_token: _,
+                colon_token: _,
+                typ: _,
+                value,
+            } => SourceSpan::combine(const_token, value),
             Ast::Unary { operator, operand } => SourceSpan::combine(operator, operand),
             Ast::Binary {
                 left,

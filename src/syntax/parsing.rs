@@ -72,6 +72,27 @@ fn parse_primary_expression<'filepath, 'source>(
             kind: TokenKind::String(_),
             ..
         } => Ast::String { string_token },
+        let_token @ Token {
+            kind: TokenKind::LetKeyword,
+            ..
+        } => {
+            _ = let_token;
+            todo!();
+        }
+        var_token @ Token {
+            kind: TokenKind::VarKeyword,
+            ..
+        } => {
+            _ = var_token;
+            todo!();
+        }
+        const_token @ Token {
+            kind: TokenKind::ConstKeyword,
+            ..
+        } => {
+            _ = const_token;
+            todo!();
+        }
         proc_token @ Token {
             kind: TokenKind::ProcKeyword,
             ..

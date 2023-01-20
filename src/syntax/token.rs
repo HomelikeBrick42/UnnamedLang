@@ -44,6 +44,8 @@ pub enum TokenKind<'source> {
     LetKeyword,
     #[display(fmt = "var")]
     VarKeyword,
+    #[display(fmt = "const")]
+    ConstKeyword,
 }
 
 #[derive(Clone, Debug, Display)]

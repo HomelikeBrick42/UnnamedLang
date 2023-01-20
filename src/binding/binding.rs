@@ -436,6 +436,13 @@ fn bind_expression<'filepath, 'source, 'a>(
             typ: _,
             value: _,
         } => todo!(),
+        Ast::Const {
+            const_token: _,
+            name_token: _,
+            colon_token: _,
+            typ: _,
+            value: _,
+        } => todo!(),
         Ast::Unary {
             operator: _,
             operand: _,
@@ -583,5 +590,6 @@ fn eval_type<'filepath, 'source>(
         BoundNode::Name { resolved_node } => eval_type(resolved_node, nodes, names)?,
         BoundNode::Integer(_) => unreachable!(),
         BoundNode::String(_) => unreachable!(),
+        BoundNode::Builtin(ref builtin) => match *builtin {},
     })
 }
